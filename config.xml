@@ -30,7 +30,9 @@
 	<plugin name="cordova-plugin-whitelist" />
 	<plugin name="cordova-plugin-wkwebview-engine" />
 	<plugin name="cordova-plugin-crosswalk-webview" />
-	<plugin name="cordova-android-support-gradle-release" />	
+	<plugin name="cordova-android-support-gradle-release">
+		<variable name="ANDROID_SUPPORT_VERSION" value="16.+" />
+	</plugin>
 
 
 	<engine name="ios" />
