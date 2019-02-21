@@ -20,7 +20,7 @@
 
 	<preference name="deployment-target" value="9.0" />
 	<preference name="android-minSdkVersion" value="16" />
-	<preference name="phonegap-version" value="cli-6.0.0" />
+	<preference name="phonegap-version" value="cli-6.5.0" />
 	<access origin="*" />
 
 	<plugin name="cordova-custom-config" />
@@ -30,6 +30,9 @@
 	<plugin name="cordova-plugin-whitelist" />
 	<plugin name="cordova-plugin-wkwebview-engine" />
 	<plugin name="cordova-plugin-crosswalk-webview" />
+	<plugin name="cordova-android-support-gradle-release">
+		<variable name="ANDROID_SUPPORT_VERSION" value="27.+" />
+	</plugin>
 
 
 	<engine name="ios" />
