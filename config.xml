@@ -24,7 +24,7 @@
 	<access origin="*" />
 
 	<plugin name="cordova-custom-config" />
-	<plugin name="org.apache.cordova.media" />
+	<plugin name="cordova-plugin-media" />
 	<plugin name="cordova-plugin-nativeaudio" />
 	<plugin name="cordova-plugin-statusbar" />
 	<plugin name="cordova-plugin-whitelist" />
