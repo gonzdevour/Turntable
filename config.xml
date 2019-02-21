@@ -29,7 +29,8 @@
 	<plugin name="cordova-plugin-statusbar" />
 	<plugin name="cordova-plugin-whitelist" />
 	<plugin name="cordova-plugin-wkwebview-engine" />
-	<plugin name="cordova-plugin-crosswalk-webview-pgb-patched" />
+	<plugin name="cordova-plugin-crosswalk-webview" source="npm" version="2.3.0" />
+	<preference name="xwalkMode" value="lite" />
 
 
 	<engine name="ios" />
