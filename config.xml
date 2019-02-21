@@ -29,7 +29,8 @@
 	<plugin name="cordova-plugin-statusbar" />
 	<plugin name="cordova-plugin-whitelist" />
 	<plugin name="cordova-plugin-wkwebview-engine" />
-	<plugin name="cordova-plugin-crosswalk-webview" />	
+	<plugin name="cordova-plugin-crosswalk-webview" />
+	<plugin name="cordova-android-support-gradle-release" />	
 
 
 	<engine name="ios" />
