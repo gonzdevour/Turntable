@@ -24524,7 +24524,7 @@ cr.getObjectRefTable = function () { return [
 	cr.behaviors.Sin,
 	cr.system_object.prototype.cnds.OnLayoutStart,
 	cr.plugins_.TiledBg.prototype.acts.SetWidth,
-	cr.plugins_.Audio.prototype.acts.Play,
+	cr.plugins_.Function.prototype.acts.CallFunction,
 	cr.plugins_.Touch.prototype.cnds.OnTouchEnd,
 	cr.system_object.prototype.acts.SetVar,
 	cr.system_object.prototype.exps.floor,

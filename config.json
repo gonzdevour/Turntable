@@ -1,6 +1,6 @@
 ﻿{
 	"id": "com.playone.turntable",
-	"version": "0.0.2",
+	"version": "0.0.1",
 	"name": "Turntable",
 	"description": "Turntable",
 	"author": "playone",
@@ -29,8 +29,8 @@
 		{ "id": "cordova-plugin-wkwebview-engine", "version": null }
 	],
 	"android": {
-		"min": 16,
-		"target": 17,
+		"min": 21,
+		"target": 26,
 		"plugins": []
 	},
 	"ios": {
