@@ -24517,9 +24517,9 @@ cr.getObjectRefTable = function () { return [
 	cr.plugins_.Rex_jsshell,
 	cr.plugins_.rex_TagText,
 	cr.plugins_.Sprite,
-	cr.plugins_.TiledBg,
 	cr.plugins_.TextBox,
 	cr.plugins_.Touch,
+	cr.plugins_.TiledBg,
 	cr.behaviors.Rex_Turntable,
 	cr.behaviors.Sin,
 	cr.system_object.prototype.cnds.OnLayoutStart,
@@ -24530,9 +24530,7 @@ cr.getObjectRefTable = function () { return [
 	cr.system_object.prototype.exps.floor,
 	cr.system_object.prototype.exps.random,
 	cr.behaviors.Rex_Turntable.prototype.acts.StartSpinning,
-	cr.plugins_.TiledBg.prototype.exps.Width,
-	cr.plugins_.Touch.prototype.cnds.IsInTouch,
-	cr.system_object.prototype.exps.dt,
+	cr.system_object.prototype.exps.round,
 	cr.behaviors.Rex_Turntable.prototype.cnds.OnHitTarget,
 	cr.plugins_.rex_TagText.prototype.acts.SetText
 ];};
