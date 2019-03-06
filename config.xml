@@ -118,10 +118,7 @@
 	<plugin name="cordova-plugin-media" />
 	<plugin name="cordova-plugin-nativeaudio" />
 	<plugin name="cordova-plugin-wkwebview-engine" />
-	<plugin name="cordova-plugin-crosswalk-webview" />
-	<plugin name="cordova-android-support-gradle-release">
-		<variable name="ANDROID_SUPPORT_VERSION" value="27.+" />
-	</plugin>	
+	<plugin name="cocoon-plugin-canvasplus-common" />
 	<plugin name="cordova-plugin-splashscreen" />
 	<plugin name="cordova-plugin-dialogs" source="npm" />
 	<plugin name="cordova-plugin-password-dialog" source="npm" />

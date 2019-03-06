@@ -24532,5 +24532,10 @@ cr.getObjectRefTable = function () { return [
 	cr.behaviors.Rex_Turntable.prototype.acts.StartSpinning,
 	cr.system_object.prototype.exps.round,
 	cr.behaviors.Rex_Turntable.prototype.cnds.OnHitTarget,
-	cr.plugins_.rex_TagText.prototype.acts.SetText
+	cr.plugins_.rex_TagText.prototype.acts.SetText,
+	cr.plugins_.Function.prototype.cnds.OnFunction,
+	cr.plugins_.Rex_jsshell.prototype.acts.SetFunctionName,
+	cr.plugins_.Rex_jsshell.prototype.acts.AddValue,
+	cr.plugins_.Rex_jsshell.prototype.acts.AddCallback,
+	cr.plugins_.Rex_jsshell.prototype.acts.InvokeFunction
 ];};
