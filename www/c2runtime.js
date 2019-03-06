@@ -24533,9 +24533,17 @@ cr.getObjectRefTable = function () { return [
 	cr.system_object.prototype.exps.round,
 	cr.behaviors.Rex_Turntable.prototype.cnds.OnHitTarget,
 	cr.plugins_.rex_TagText.prototype.acts.SetText,
+	cr.system_object.prototype.cnds.IsGroupActive,
 	cr.plugins_.Function.prototype.cnds.OnFunction,
 	cr.plugins_.Rex_jsshell.prototype.acts.SetFunctionName,
 	cr.plugins_.Rex_jsshell.prototype.acts.AddValue,
 	cr.plugins_.Rex_jsshell.prototype.acts.AddCallback,
-	cr.plugins_.Rex_jsshell.prototype.acts.InvokeFunction
+	cr.plugins_.Rex_jsshell.prototype.acts.InvokeFunction,
+	cr.plugins_.Function.prototype.cnds.CompareParam,
+	cr.system_object.prototype.cnds.Else,
+	cr.plugins_.Function.prototype.exps.Param,
+	cr.plugins_.TextBox.prototype.acts.SetText,
+	cr.plugins_.TextBox.prototype.exps.Text,
+	cr.system_object.prototype.exps.newline,
+	cr.plugins_.Rex_jsshell.prototype.cnds.OnCallback
 ];};
