@@ -19936,6 +19936,2955 @@ cr.plugins_.Rex_Comment = function(runtime)
 }());
 ;
 ;
+cr.plugins_.Rex_Date = function(runtime)
+{
+	this.runtime = runtime;
+};
+(function ()
+{
+	var pluginProto = cr.plugins_.Rex_Date.prototype;
+	pluginProto.Type = function(plugin)
+	{
+		this.plugin = plugin;
+		this.runtime = plugin.runtime;
+	};
+	var typeProto = pluginProto.Type.prototype;
+	typeProto.onCreate = function()
+	{
+	};
+	pluginProto.Instance = function(type)
+	{
+		this.type = type;
+		this.runtime = type.runtime;
+	};
+	var instanceProto = pluginProto.Instance.prototype;
+	instanceProto.onCreate = function()
+	{
+	    this.timers = {};
+        /*
+        {
+            "state":1=run, 0=paused
+            "start": timstamp, updated when resumed
+            "acc": delta-time, updated when paused
+        }
+        */
+	};
+    var startTimer = function(timer, curTimestamp)
+    {
+        if (!timer)
+            timer = {};
+        if (!curTimestamp)
+            curTimestamp = (new Date()).getTime();
+        timer["state"] = 1;
+        timer["start"] = curTimestamp;
+        timer["acc"] = 0;
+        return timer;
+    };
+    var getElapsedTime = function(timer)
+    {
+        if (!timer)
+            return 0;
+        var deltaTime = timer["acc"];
+        if (timer["state"] === 1)
+        {
+            var curTime = (new Date()).getTime();
+            deltaTime += (curTime - timer["start"]);
+        }
+        return deltaTime;
+    };
+    var pauseTimer = function(timer)
+    {
+        if ((!timer) || (timer["state"] === 0))
+            return;
+        timer["state"] = 0;
+        var curTime = (new Date()).getTime();
+        timer["acc"] += (curTime - timer["start"]);
+    };
+    var resumeTimer = function(timer)
+    {
+        if ((!timer) || (timer["state"] === 1))
+            return;
+        timer["state"] = 1;
+        timer["start"] = (new Date()).getTime();
+    };
+	var getDate = function (timestamp)
+	{
+		return (timestamp != null)? new Date(timestamp): new Date();
+	};
+    instanceProto.saveToJSON = function ()
+	{
+		return { "tims": this.timers,
+                };
+	};
+	instanceProto.loadFromJSON = function (o)
+	{
+		this.timers = o["tims"];
+	};
+	function Cnds() {};
+	pluginProto.cnds = new Cnds();
+	function Acts() {};
+	pluginProto.acts = new Acts();
+	Acts.prototype.StartTimer = function (name)
+	{
+        this.timers[name] = startTimer(this.timers[name]);
+	};
+	Acts.prototype.PauseTimer = function (name)
+	{
+        pauseTimer(this.timers[name]);
+	};
+	Acts.prototype.ResumeTimer = function (name)
+	{
+        resumeTimer(this.timers[name]);
+	};
+	function Exps() {};
+	pluginProto.exps = new Exps();
+	Exps.prototype.Year = function (ret, timestamp)
+	{
+		ret.set_int(getDate(timestamp).getFullYear());
+	};
+	Exps.prototype.Month = function (ret, timestamp)
+	{
+	    ret.set_int(getDate(timestamp).getMonth()+1);
+	};
+	Exps.prototype.Date = function (ret, timestamp)
+	{
+	    ret.set_int(getDate(timestamp).getDate());
+	};
+	Exps.prototype.Day = function (ret, timestamp)
+	{
+	    ret.set_int(getDate(timestamp).getDay());
+	};
+	Exps.prototype.Hours = function (ret, timestamp)
+	{
+	    ret.set_int(getDate(timestamp).getHours());
+	};
+	Exps.prototype.Minutes = function (ret, timestamp)
+	{
+	    ret.set_int(getDate(timestamp).getMinutes());
+	};
+	Exps.prototype.Seconds = function (ret, timestamp)
+	{
+	    ret.set_int(getDate(timestamp).getSeconds());
+	};
+	Exps.prototype.Milliseconds = function (ret, timestamp)
+	{
+	    ret.set_int(getDate(timestamp).getMilliseconds());
+	};
+	Exps.prototype.Timer = function (ret, name)
+	{
+		ret.set_float(getElapsedTime(this.timers[name])/1000);
+	};
+	Exps.prototype.CurTicks = function (ret)
+	{
+	    var today = new Date();
+        ret.set_int(today.getTime());
+	};
+	Exps.prototype.UnixTimestamp = function (ret, year, month, day, hours, minutes, seconds, milliseconds)
+	{
+        var d;
+        if (year == null)
+        {
+            d = new Date();
+        }
+        else
+        {
+            month = month || 1;
+            day = day || 1;
+            hours = hours || 0;
+            minutes = minutes || 0;
+            seconds = seconds || 0;
+            milliseconds = milliseconds || 0;
+            d = new Date(year, month-1, day, hours, minutes, seconds, milliseconds);
+        }
+        ret.set_float(d.getTime());
+	};
+	Exps.prototype.Date2UnixTimestamp = function (ret, year, month, day, hours, minutes, seconds, milliseconds)
+	{
+        year = year || 2000;
+        month = month || 1;
+        day = day || 1;
+        hours = hours || 0;
+        minutes = minutes || 0;
+        seconds = seconds || 0;
+        milliseconds = milliseconds || 0;
+        var timestamp = new Date(year, month-1, day, hours, minutes, seconds, milliseconds); // build Date object
+        ret.set_float(timestamp.getTime());
+	};
+    Exps.prototype.LocalExpression = function (ret, timestamp, locales)
+	{
+	    ret.set_string( getDate(timestamp).toLocaleString(locales) );
+	};
+}());
+;
+;
+cr.plugins_.Rex_Firebase = function(runtime)
+{
+	this.runtime = runtime;
+};
+(function ()
+{
+	var pluginProto = cr.plugins_.Rex_Firebase.prototype;
+	pluginProto.Type = function(plugin)
+	{
+		this.plugin = plugin;
+		this.runtime = plugin.runtime;
+	};
+	var typeProto = pluginProto.Type.prototype;
+	typeProto.onCreate = function()
+	{
+	};
+	pluginProto.Instance = function(type)
+	{
+		this.type = type;
+		this.runtime = type.runtime;
+	};
+	var instanceProto = pluginProto.Instance.prototype;
+	var EVENTTYPEMAP = ["value", "child_added", "child_changed", "child_removed","child_moved"];
+	instanceProto.onCreate = function()
+	{
+        this.rootpath = this.properties[0] + "/";
+		this.lastPushRef = "";
+		this.onTransaction = {};
+        this.onTransaction.cb = null;
+        this.onTransaction.input = null;
+        this.onTransaction.output = null;
+        this.onTransaction.completedCB = null;
+        this.onTransaction.committedValue = null;
+        this.onCompleteCb = null;
+        this.error = null;
+        if (!this.recycled)
+            this.callbackMap = new window.FirebaseCallbackMapKlass();
+        else
+            this.callbackMap.Reset();
+        this.onReadCb = null;
+        this.snapshot = null;
+		this.prevChildName = null;
+        this.exp_LastGeneratedKey = "";
+        this.exp_ServerTimeOffset = 0;
+        this.isConnected = false;
+        var self=this;
+        var setupFn = function ()
+        {
+            if (self.properties[1] === 1)
+                self.connectionDetectingStart();
+            if (self.properties[2] === 1)
+                self.serverTimeOffsetDetectingStart();
+        }
+        window.FirebaseAddAfterInitializeHandler(setupFn);
+	};
+	instanceProto.onDestroy = function ()
+	{
+	     this.callbackMap.Remove();
+	};
+	var isFirebase3x = function()
+	{
+        return (window["FirebaseV3x"] === true);
+    };
+    var isFullPath = function (p)
+    {
+        return (p.substring(0,8) === "https://");
+    };
+	instanceProto.getRef = function(k)
+	{
+        if (k == null)
+	        k = "";
+	    var path;
+	    if (isFullPath(k))
+	        path = k;
+	    else
+	        path = this.rootpath + k + "/";
+        if (!isFirebase3x())
+        {
+            return new window["Firebase"](path);
+        }
+        else
+        {
+            var fnName = (isFullPath(path))? "refFromURL":"ref";
+            return window["Firebase"]["database"]()[fnName](path);
+        }
+	};
+    var getKey = function (obj)
+    {
+        return (!isFirebase3x())?  obj["key"]() : obj["key"];
+    };
+    var getRefPath = function (obj)
+    {
+        return (!isFirebase3x())?  obj["ref"]() : obj["ref"];
+    };
+    var getRoot = function (obj)
+    {
+        return (!isFirebase3x())?  obj["root"]() : obj["root"];
+    };
+    var serverTimeStamp = function ()
+    {
+        if (!isFirebase3x())
+            return window["Firebase"]["ServerValue"]["TIMESTAMP"];
+        else
+            return window["Firebase"]["database"]["ServerValue"];
+    };
+    var getTimestamp = function (obj)
+    {
+        return (!isFirebase3x())?  obj : obj["TIMESTAMP"];
+    };
+    instanceProto.addCallback = function (query, type_, cbName)
+	{
+	    var eventType = EVENTTYPEMAP[type_];
+	    var self = this;
+        var reading_handler = function (snapshot, prevChildName)
+        {
+            self.onReadCb = cbName;
+            self.snapshot = snapshot;
+			self.prevChildName = prevChildName;
+            self.runtime.trigger(cr.plugins_.Rex_Firebase.prototype.cnds.OnReading, self);
+            self.onReadCb = null;
+        };
+        this.callbackMap.Add(query, eventType, cbName, reading_handler);
+	};
+    instanceProto.addCallbackOnce = function (refObj, type_, cb)
+	{
+	    var eventType = EVENTTYPEMAP[type_];
+	    var self = this;
+        var reading_handler = function (snapshot, prevChildName)
+        {
+            self.onReadCb = cb;
+            self.snapshot = snapshot;
+            self.prevChildName = prevChildName;
+            self.runtime.trigger(cr.plugins_.Rex_Firebase.prototype.cnds.OnReading, self);
+            self.onReadCb = null;
+        };
+	    refObj["once"](eventType, reading_handler);
+	};
+	instanceProto.connectionDetectingStart = function ()
+	{
+        var self = this;
+        var onValueChanged = function (snap)
+        {
+            var trig;
+            var isConnected = !!snap["val"]();
+            if ( isConnected )
+                trig = cr.plugins_.Rex_Firebase.prototype.cnds.OnConnected;
+            else if (self.isConnected && !isConnected)   // disconnected after connected
+                trig = cr.plugins_.Rex_Firebase.prototype.cnds.OnDisconnected;
+            self.isConnected = isConnected;
+            self.runtime.trigger(trig, self);
+        };
+        var p = getRoot(this.getRef()) + "/.info/connected";
+        var ref = this.getRef(p);
+        ref.on("value", onValueChanged);
+	};
+	instanceProto.serverTimeOffsetDetectingStart = function ()
+	{
+        var self = this;
+        var onValueChanged = function (snap)
+        {
+            self.exp_ServerTimeOffset = snap["val"]() || 0;
+        };
+        var p = getRoot(this.getRef()) + "/.info/serverTimeOffset";
+        var ref = this.getRef(p);
+        ref.on("value", onValueChanged);
+	};
+	function Cnds() {};
+	pluginProto.cnds = new Cnds();
+	Cnds.prototype.OnTransaction = function (cb)
+	{
+	    return cr.equals_nocase(cb, this.onTransaction.cb);
+	};
+	Cnds.prototype.OnReading = function (cb)
+	{
+	    return cr.equals_nocase(cb, this.onReadCb);
+	};
+	Cnds.prototype.OnComplete = function (cb)
+	{
+	    return cr.equals_nocase(cb, this.onCompleteCb);
+	};
+	Cnds.prototype.OnError = function (cb)
+	{
+	    return cr.equals_nocase(cb, this.onCompleteCb);
+	};
+	Cnds.prototype.LastDataIsNull = function ()
+	{
+        var data =(this.snapshot === null)? null: this.snapshot["val"]();
+	    return (data === null);
+	};
+	Cnds.prototype.TransactionInIsNull = function ()
+	{
+        var data =(this.onTransaction.input === null)? null: this.onTransaction.input;
+	    return (data === null);
+	};
+	Cnds.prototype.IsTransactionAborted = function () { return false; };
+	Cnds.prototype.OnTransactionComplete = function (cb)
+	{
+	    return cr.equals_nocase(cb, this.onTransaction.completedCB);
+	};
+	Cnds.prototype.OnTransactionError = function (cb)
+	{
+	    return cr.equals_nocase(cb, this.onTransaction.completedCB);
+	};
+	Cnds.prototype.OnTransactionAbort = function (cb)
+	{
+	    return cr.equals_nocase(cb, this.onTransaction.completedCB);
+	};
+	Cnds.prototype.OnConnected = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.OnDisconnected = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.IsConnected = function ()
+	{
+	    return this.isConnected;
+	};
+	function Acts() {};
+	pluginProto.acts = new Acts();
+    Acts.prototype.SetDomainRef = function (ref)
+	{
+	    this.rootpath = ref + "/";
+	};
+	var getOnCompleteHandler = function (self, onCompleteCb)
+	{
+	    if ((onCompleteCb === null) || (onCompleteCb === ""))
+	        return;
+	    var handler = function(error)
+	    {
+	        self.onCompleteCb = onCompleteCb;
+	        self.error = error;
+	        var trig = (error)? cr.plugins_.Rex_Firebase.prototype.cnds.OnError:
+	                            cr.plugins_.Rex_Firebase.prototype.cnds.OnComplete;
+	        self.runtime.trigger(trig, self);
+	        self.onCompleteCb = null;
+        };
+        return handler;
+	};
+    Acts.prototype.SetValue = function (k, v, onCompleteCb)
+	{
+	    var handler = getOnCompleteHandler(this, onCompleteCb);
+	    this.getRef(k)["set"](v, handler);
+	};
+    Acts.prototype.SetJSON = function (k, v, onCompleteCb)
+	{
+	    var handler = getOnCompleteHandler(this, onCompleteCb);
+	    this.getRef(k)["set"](JSON.parse(v), handler);
+	};
+    Acts.prototype.UpdateJSON = function (k, v, onCompleteCb)
+	{
+	    var handler = getOnCompleteHandler(this, onCompleteCb);
+	    this.getRef(k)["update"](JSON.parse(v), handler);
+	};
+    Acts.prototype.PushValue = function (k, v, onCompleteCb)
+	{
+	    var handler = getOnCompleteHandler(this, onCompleteCb);
+	    var ref = this.getRef(k)["push"](v, handler);
+		this.lastPushRef = k + "/" +  getKey(ref);
+	};
+    Acts.prototype.PushJSON = function (k, v, onCompleteCb)
+	{
+	    var handler = getOnCompleteHandler(this, onCompleteCb);
+	    var ref = this.getRef(k)["push"](JSON.parse(v), handler);
+		this.lastPushRef = k + "/" + getKey(ref);
+	};
+    Acts.prototype.Transaction = function (k, onTransactionCb, onCompleteCb)
+	{
+        var self = this;
+	    var _onComplete = function(error, committed, snapshot)
+	    {
+	        self.onTransaction.completedCB = onCompleteCb;
+	        self.error = error;
+            self.onTransaction.committedValue = snapshot["val"]();
+            var cnds = cr.plugins_.Rex_Firebase.prototype.cnds;
+	        var trig = (error)? cnds.OnTransactionError:
+                           (!committed)? cnds.OnTransactionAbort:
+	                           cnds.OnTransactionComplete;
+	        self.runtime.trigger(trig, self);
+	        self.onTransaction.completedCB = null;
+        };
+        var _onTransaction = function(current_value)
+        {
+            self.onTransaction.cb = onTransactionCb;
+            self.onTransaction.input = current_value;
+            self.onTransaction.output = null;
+            self.runtime.trigger(cr.plugins_.Rex_Firebase.prototype.cnds.OnTransaction, self);
+            self.onTransaction.cb = null;
+            if (self.onTransaction.output === null)
+                return;
+            else
+                return self.onTransaction.output;
+        };
+	    this.getRef(k)["transaction"](_onTransaction, _onComplete);
+	};
+    Acts.prototype.ReturnTransactionValue = function (v)
+	{
+	    this.onTransaction.output = v;
+	};
+    Acts.prototype.ReturnTransactionJSON = function (v)
+	{
+	    this.onTransaction.output = JSON.parse(v);
+	};
+    Acts.prototype.Remove = function (k, onCompleteCb)
+	{
+	    var handler = getOnCompleteHandler(this, onCompleteCb);
+	    this.getRef(k)["remove"](handler);
+	};
+    Acts.prototype.SetBooleanValue = function (k, b, onCompleteCb)
+	{
+	    var handler = getOnCompleteHandler(this, onCompleteCb);
+	    this.getRef(k)["set"]((b===1), handler);
+	};
+    Acts.prototype.PushBooleanValue = function (k, b, onCompleteCb)
+	{
+	    var handler = getOnCompleteHandler(this, onCompleteCb);
+	    var ref = this.getRef(k)["push"]((b===1), handler);
+		this.lastPushRef = k + "/" +  getKey(ref);
+	};
+    Acts.prototype.SetServerTimestamp = function (k, onCompleteCb)
+	{
+	    var handler = getOnCompleteHandler(this, onCompleteCb);
+	    this.getRef(k)["set"](serverTimeStamp(), handler);
+	};
+    Acts.prototype.PushServerTimestamp = function (k, onCompleteCb)
+	{
+	    var handler = getOnCompleteHandler(this, onCompleteCb);
+	    var ref = this.getRef(k)["push"](serverTimeStamp(), handler);
+		this.lastPushRef = k + "/" +  getKey(ref);
+	};
+    Acts.prototype.AddReadingCallback = function (k, type_, cbName)
+	{
+	    this.addCallback(this.getRef(k), type_, cbName);
+	};
+    Acts.prototype.RemoveReadingCallback = function (k, type_, cbName)
+	{
+        var absRef = (k != null)? this.getRef(k)["toString"](): null;
+        var eventType = (type_ != null)? EVENTTYPEMAP[type_]: null;
+        this.callbackMap.Remove(absRef, eventType, cbName);
+	};
+    Acts.prototype.AddReadingCallbackOnce = function (k, type_, cbName)
+	{
+	    this.addCallbackOnce(this.getRef(k), type_, cbName);
+	};
+    Acts.prototype.RemoveRefOnDisconnect = function (k)
+	{
+	    this.getRef(k)["onDisconnect"]()["remove"]();
+	};
+    Acts.prototype.SetValueOnDisconnect = function (k, v)
+	{
+	    this.getRef(k)["onDisconnect"]()["set"](v);
+	};
+    Acts.prototype.UpdateJSONOnDisconnect = function (k, v)
+	{
+	    this.getRef(k)["onDisconnect"]()["update"](JSON.parse(v));
+	};
+    Acts.prototype.CancelOnDisconnect = function (k)
+	{
+	    this.getRef(k)["onDisconnect"]()["cancel"]();
+	};
+    var get_query = function (queryObjs)
+    {
+	    if (queryObjs == null)
+	        return null;
+        var query = queryObjs.getFirstPicked();
+        if (query == null)
+            return null;
+        return query.GetQuery();
+    };
+    Acts.prototype.AddQueryCallback = function (queryObjs, type_, cbName)
+	{
+        var refObj = get_query(queryObjs);
+        if (refObj == null)
+            return;
+        this.addCallback(refObj, type_, cbName);
+	};
+    Acts.prototype.AddQueryCallbackOnce = function (queryObjs, type_, cbName)
+	{
+        var refObj = get_query(queryObjs);
+        if (refObj == null)
+            return;
+	   this.addCallbackOnce(refObj, type_, cbName);
+	};
+    Acts.prototype.GoOffline = function ()
+	{
+        if (!isFirebase3x())
+        {
+	        window["Firebase"]["goOffline"]();
+        }
+        else
+        {
+            window["Firebase"]["database"]()["goOffline"]();
+        }
+	};
+    Acts.prototype.GoOnline = function ()
+	{
+        if (!isFirebase3x())
+        {
+	        window["Firebase"]["goOnline"]();
+        }
+        else
+        {
+            window["Firebase"]["database"]()["goOnline"]();
+        }
+	};
+	function Exps() {};
+	pluginProto.exps = new Exps();
+	Exps.prototype.Domain = function (ret)
+	{
+		ret.set_string(this.rootpath);
+	};
+	Exps.prototype.TransactionIn = function (ret, default_value)
+	{
+		ret.set_any(window.FirebaseGetValueByKeyPath(this.onTransaction.input, null, default_value));
+	};
+	Exps.prototype.LastData = function (ret, default_value)
+	{
+        var data =(this.snapshot === null)? null: this.snapshot["val"]();
+		ret.set_any(window.FirebaseGetValueByKeyPath(data, null, default_value));
+	};
+	Exps.prototype.LastKey = function (ret, default_value)
+	{
+        var key =(this.snapshot === null)? null: getKey(this.snapshot);
+		ret.set_any(window.FirebaseGetValueByKeyPath(key, null, default_value));
+	};
+	Exps.prototype.PrevChildName = function (ret, default_value)
+	{
+		ret.set_any(window.FirebaseGetValueByKeyPath(this.prevChildName, null, default_value));
+	};
+	Exps.prototype.TransactionResult = function (ret, default_value)
+	{
+		ret.set_any(window.FirebaseGetValueByKeyPath(this.onTransaction.committedValue, null, default_value));
+	};
+	Exps.prototype.LastPushRef = function (ret)
+	{
+		ret.set_string(this.lastPushRef);
+	};
+  	Exps.prototype.GenerateKey = function (ret)
+	{
+	    var ref = this.getRef()["push"]();
+        this.exp_LastGeneratedKey = getKey(ref);
+		ret.set_string(this.exp_LastGeneratedKey);
+	};
+	Exps.prototype.LastGeneratedKey = function (ret)
+	{
+	    ret.set_string(this.exp_LastGeneratedKey);
+	};
+	Exps.prototype.ServerTimeOffset = function (ret)
+	{
+	    ret.set_int(this.exp_ServerTimeOffset);
+	};
+	Exps.prototype.EstimatedTime = function (ret)
+	{
+	    ret.set_int(new Date().getTime() + this.exp_ServerTimeOffset);
+	};
+	Exps.prototype.LastErrorCode = function (ret)
+	{
+        var code;
+	    if (this.error)
+            code = this.error["code"];
+		ret.set_string(code || "");
+	};
+	Exps.prototype.LastErrorMessage = function (ret)
+	{
+        var s;
+	    if (this.error)
+            s = this.error["serverResponse"];
+		ret.set_string(s || "");
+	};
+}());
+;
+;
+window["Firebase"] = window["firebase"];
+window["FirebaseV3x"] = true;
+cr.plugins_.Rex_FirebaseAPIV3 = function(runtime)
+{
+	this.runtime = runtime;
+};
+(function ()
+{
+	var pluginProto = cr.plugins_.Rex_FirebaseAPIV3.prototype;
+	pluginProto.Type = function(plugin)
+	{
+		this.plugin = plugin;
+		this.runtime = plugin.runtime;
+	};
+	var typeProto = pluginProto.Type.prototype;
+	typeProto.onCreate = function()
+	{
+	};
+	pluginProto.Instance = function(type)
+	{
+		this.type = type;
+		this.runtime = type.runtime;
+	};
+	var instanceProto = pluginProto.Instance.prototype;
+	instanceProto.onCreate = function()
+	{
+        window["Firebase"]["database"]["enableLogging"](this.properties[4] === 1);
+        if (this.properties[0] !== "")
+        {
+            this.initializeApp(this.properties[0], this.properties[1], this.properties[2], this.properties[3]);
+        }
+	};
+	instanceProto.onDestroy = function ()
+	{
+	};
+	instanceProto.initializeApp = function (apiKey, authDomain, databaseURL, storageBucket)
+	{
+        var config = {
+            "apiKey": apiKey,
+            "authDomain": authDomain,
+            "databaseURL": databaseURL,
+            "storageBucket": storageBucket,
+        };
+        window["Firebase"]["initializeApp"](config);
+        runAfterInitializeHandlers();
+	};
+	var isFirebase3x = function()
+	{
+        return (window["FirebaseV3x"] === true);
+    };
+    var isFullPath = function (p)
+    {
+        return (p.substring(0,8) === "https://");
+    };
+	var getRef = function(path)
+	{
+        if (!isFirebase3x())
+        {
+            return new window["Firebase"](path);
+        }
+        else
+        {
+            var fnName = (isFullPath(path))? "refFromURL":"ref";
+            return window["Firebase"]["database"]()[fnName](path);
+        }
+	};
+	instanceProto.getRef = function(k)
+	{
+        if (k == null)
+	        k = "";
+	    var path;
+	    if (isFullPath(k))
+	        path = k;
+	    else
+	        path = this.rootpath + k + "/";
+        return getRef(path);
+	};
+    var getKey = function (obj)
+    {
+        return (!isFirebase3x())?  obj["key"]() : obj["key"];
+    };
+    var getRefPath = function (obj)
+    {
+        return (!isFirebase3x())?  obj["ref"]() : obj["ref"];
+    };
+    var getRoot = function (obj)
+    {
+        return (!isFirebase3x())?  obj["root"]() : obj["root"];
+    };
+    var serverTimeStamp = function ()
+    {
+        if (!isFirebase3x())
+            return window["Firebase"]["ServerValue"]["TIMESTAMP"];
+        else
+            return window["Firebase"]["database"]["ServerValue"];
+    };
+    var getTimestamp = function (obj)
+    {
+        return (!isFirebase3x())?  obj : obj["TIMESTAMP"];
+    };
+	function Cnds() {};
+	pluginProto.cnds = new Cnds();
+	function Acts() {};
+	pluginProto.acts = new Acts();
+	Acts.prototype.initializeApp = function (apiKey, authDomain, databaseURL, storageBucket)
+	{
+        this.initializeApp(apiKey, authDomain, databaseURL, storageBucket);
+	};
+	function Exps() {};
+	pluginProto.exps = new Exps();
+    var __afterInitialHandler = [];
+    var addAfterInitialHandler = function(callback)
+    {
+        if (__afterInitialHandler === null)
+            callback()
+        else
+            __afterInitialHandler.push(callback);
+    };
+    var runAfterInitializeHandlers = function()
+    {
+        var i, cnt=__afterInitialHandler.length;
+        for(i=0; i<cnt; i++)
+        {
+            __afterInitialHandler[i]();
+        }
+        __afterInitialHandler = null;
+    };
+	window.FirebaseAddAfterInitializeHandler = addAfterInitialHandler;
+    var ItemListKlass = function ()
+    {
+        this.updateMode = 1;                  // AUTOCHILDUPDATE
+        this.keyItemID = "__itemID__";
+        this.snapshot2Item = null;
+        this.onItemAdd = null;
+        this.onItemRemove = null;
+        this.onItemChange = null;
+        this.onItemsFetch = null;
+        this.onGetIterItem = null;
+        this.extra = {};
+        this.query = null;
+        this.items = [];
+        this.itemID2Index = {};
+        this.onAddChildCb = null;
+        this.onRemoveChildCb = null;
+        this.onChangeChildCb = null;
+        this.onItemsFetchCb = null;
+    };
+    var ItemListKlassProto = ItemListKlass.prototype;
+    ItemListKlassProto.MANUALUPDATE = 0;
+    ItemListKlassProto.AUTOCHILDUPDATE = 1;
+    ItemListKlassProto.AUTOALLUPDATE = 2;
+    ItemListKlassProto.GetItems = function ()
+    {
+        return this.items;
+    };
+    ItemListKlassProto.GetItemIndexByID = function (itemID)
+    {
+        return this.itemID2Index[itemID];
+    };
+    ItemListKlassProto.GetItemByID = function (itemID)
+    {
+        var i = this.GetItemIndexByID(itemID);
+        if (i == null)
+            return null;
+        return this.items[i];
+    };
+    ItemListKlassProto.Clean = function ()
+    {
+        this.items.length = 0;
+        cleanTable(this.itemID2Index);
+    };
+    ItemListKlassProto.StartUpdate = function (query)
+    {
+        this.StopUpdate();
+        this.Clean();
+        if (this.updateMode === this.MANUALUPDATE)
+            this.manualUpdate(query);
+        else if (this.updateMode === this.AUTOCHILDUPDATE)
+            this.startUpdateChild(query);
+        else if (this.updateMode === this.AUTOALLUPDATE)
+            this.startUpdateAll(query);
+    };
+    ItemListKlassProto.StopUpdate = function ()
+	{
+        if (this.updateMode === this.AUTOCHILDUPDATE)
+            this.stopUpdateChild();
+        else if (this.updateMode === this.AUTOALLUPDATE)
+            this.stopUpdateAll();
+	};
+	ItemListKlassProto.ForEachItem = function (runtime, start, end)
+	{
+	    if ((start == null) || (start < 0))
+	        start = 0;
+	    if ((end == null) || (end > this.items.length - 1))
+	        end = this.items.length - 1;
+        var current_frame = runtime.getCurrentEventStack();
+        var current_event = current_frame.current_event;
+		var solModifierAfterCnds = current_frame.isModifierAfterCnds();
+		var i;
+		for(i=start; i<=end; i++)
+		{
+            if (solModifierAfterCnds)
+            {
+                runtime.pushCopySol(current_event.solModifiers);
+            }
+            if (this.onGetIterItem)
+                this.onGetIterItem(this.items[i], i);
+            current_event.retrigger();
+		    if (solModifierAfterCnds)
+		    {
+		        runtime.popSol(current_event.solModifiers);
+		    }
+		}
+		return false;
+	};
+    ItemListKlassProto.addItem = function(snapshot, prevName, force_push)
+	{
+	    var item;
+	    if (this.snapshot2Item)
+	        item = this.snapshot2Item(snapshot);
+	    else
+	    {
+	        var k = getKey(snapshot);
+	        item = snapshot["val"]();
+	        item[this.keyItemID] = k;
+	    }
+        if (force_push === true)
+        {
+            this.items.push(item);
+            return;
+        }
+	    if (prevName == null)
+	    {
+            this.items.unshift(item);
+        }
+        else
+        {
+            var i = this.itemID2Index[prevName];
+            if (i == this.items.length-1)
+                this.items.push(item);
+            else
+                this.items.splice(i+1, 0, item);
+        }
+        return item;
+	};
+	ItemListKlassProto.removeItem = function(snapshot)
+	{
+	    var k = getKey(snapshot);
+	    var i = this.itemID2Index[k];
+	    var item = this.items[i];
+	    cr.arrayRemove(this.items, i);
+	    return item;
+	};
+	ItemListKlassProto.updateItemID2Index = function()
+	{
+	    cleanTable(this.itemID2Index);
+	    var i,cnt = this.items.length;
+	    for (i=0; i<cnt; i++)
+	    {
+	        this.itemID2Index[this.items[i][this.keyItemID]] = i;
+	    }
+	};
+    ItemListKlassProto.manualUpdate = function(query)
+    {
+        var self=this;
+        var onReadItem = function(childSnapshot)
+        {
+            self.addItem(childSnapshot, null, true);
+        };
+        var handler = function (snapshot)
+        {
+            snapshot["forEach"](onReadItem);
+            self.updateItemID2Index();
+            if (self.onItemsFetch)
+                self.onItemsFetch(self.items)
+        };
+        query["once"]("value", handler);
+    };
+    ItemListKlassProto.startUpdateChild = function(query)
+    {
+        var self = this;
+	    var onAddChildCb = function (newSnapshot, prevName)
+	    {
+	        var item = self.addItem(newSnapshot, prevName);
+	        self.updateItemID2Index();
+	        if (self.onItemAdd)
+	            self.onItemAdd(item);
+	    };
+	    var onRemoveChildCb = function (snapshot)
+	    {
+	        var item = self.removeItem(snapshot);
+	        self.updateItemID2Index();
+	        if (self.onItemRemove)
+	            self.onItemRemove(item);
+	    };
+	    var onChangeChildCb = function (snapshot, prevName)
+	    {
+	        var item = self.removeItem(snapshot);
+	        self.updateItemID2Index();
+	        self.addItem(snapshot, prevName);
+	        self.updateItemID2Index();
+	        if (self.onItemChange)
+	            self.onItemChange(item);
+	    };
+	    this.query = query;
+        this.onAddChildCb = onAddChildCb;
+        this.onRemoveChildCb = onRemoveChildCb;
+        this.onChangeChildCb = onChangeChildCb;
+	    query["on"]("child_added", onAddChildCb);
+	    query["on"]("child_removed", onRemoveChildCb);
+	    query["on"]("child_moved", onChangeChildCb);
+	    query["on"]("child_changed", onChangeChildCb);
+    };
+    ItemListKlassProto.stopUpdateChild = function ()
+	{
+        if (!this.query)
+            return;
+        this.query["off"]("child_added", this.onAddChildCb);
+	    this.query["off"]("child_removed", this.onRemoveChildCb);
+	    this.query["off"]("child_moved", this.onChangeChildCb);
+	    this.query["off"]("child_changed", this.onChangeChildCb);
+        this.onAddChildCb = null;
+        this.onRemoveChildCb = null;
+        this.onChangeChildCb = null;
+        this.query = null;
+	};
+    ItemListKlassProto.startUpdateAll = function(query)
+    {
+        var self=this;
+        var onReadItem = function(childSnapshot)
+        {
+            self.addItem(childSnapshot, null, true);
+        };
+        var onItemsFetchCb = function (snapshot)
+        {
+            self.Clean();
+            snapshot["forEach"](onReadItem);
+            self.updateItemID2Index();
+            if (self.onItemsFetch)
+                self.onItemsFetch(self.items)
+        };
+        this.query = query;
+        this.onItemsFetchCb = onItemsFetchCb;
+        query["on"]("value", onItemsFetchCb);
+    };
+    ItemListKlassProto.stopUpdateAll = function ()
+	{
+        if (!this.query)
+            return;
+        this.query["off"]("value", this.onItemsFetchCb);
+        this.onItemsFetchCb = null;
+        this.query = null;
+	};
+	var cleanTable = function (o)
+	{
+	    var k;
+	    for (k in o)
+	        delete o[k];
+	};
+	window.FirebaseItemListKlass = ItemListKlass;
+    var CallbackMapKlass = function ()
+    {
+        this.map = {};
+    };
+    var CallbackMapKlassProto = CallbackMapKlass.prototype;
+	CallbackMapKlassProto.Reset = function(k)
+	{
+        for (var k in this.map)
+            delete this.map[k];
+	};
+	CallbackMapKlassProto.get_callback = function(absRef, eventType, cbName)
+	{
+        if (!this.IsExisted(absRef, eventType, cbName))
+            return null;
+        return this.map[absRef][eventType][cbName];
+	};
+    CallbackMapKlassProto.IsExisted = function (absRef, eventType, cbName)
+    {
+        if (!this.map.hasOwnProperty(absRef))
+            return false;
+        if (!eventType)  // don't check event type
+            return true;
+        var eventMap = this.map[absRef];
+        if (!eventMap.hasOwnProperty(eventType))
+            return false;
+        if (!cbName)  // don't check callback name
+            return true;
+        var cbMap = eventMap[eventType];
+        if (!cbMap.hasOwnProperty(cbName))
+            return false;
+        return true;
+    };
+	CallbackMapKlassProto.Add = function(query, eventType, cbName, cb)
+	{
+	    var absRef = query["toString"]();
+        if (this.IsExisted(absRef, eventType, cbName))
+            return;
+        if (!this.map.hasOwnProperty(absRef))
+            this.map[absRef] = {};
+        var eventMap = this.map[absRef];
+        if (!eventMap.hasOwnProperty(eventType))
+            eventMap[eventType] = {};
+        var cbMap = eventMap[eventType];
+        cbMap[cbName] = cb;
+	    query["on"](eventType, cb);
+	};
+	CallbackMapKlassProto.Remove = function(absRef, eventType, cbName)
+	{
+	    if ((absRef != null) && (typeof(absRef) == "object"))
+	        absRef = absRef["toString"]();
+        if (absRef && eventType && cbName)
+        {
+            var cb = this.get_callback(absRef, eventType, cbName);
+            if (cb == null)
+                return;
+            getRef(absRef)["off"](eventType, cb);
+            delete this.map[absRef][eventType][cbName];
+        }
+        else if (absRef && eventType && !cbName)
+        {
+            var eventMap = this.map[absRef];
+            if (!eventMap)
+                return;
+            var cbMap = eventMap[eventType];
+            if (!cbMap)
+                return;
+            getRef(absRef)["off"](eventType);
+            delete this.map[absRef][eventType];
+        }
+        else if (absRef && !eventType && !cbName)
+        {
+            var eventMap = this.map[absRef];
+            if (!eventMap)
+                return;
+            getRef(absRef)["off"]();
+            delete this.map[absRef];
+        }
+        else if (!absRef && !eventType && !cbName)
+        {
+            for (var r in this.map)
+            {
+                getRef(r)["off"]();
+                delete this.map[r];
+            }
+        }
+	};
+	CallbackMapKlassProto.RemoveAllCB = function(absRef)
+	{
+	    if (absRef)
+	    {
+            var eventMap = this.map[absRef];
+            for (var e in eventMap)
+            {
+                var cbMap = eventMap[e];
+                for (var cbName in cbMap)
+                {
+                    getRef(absRef)["off"](e, cbMap[cbName]);
+                }
+            }
+            delete this.map[absRef];
+	    }
+	    else if (!absRef)
+	    {
+            for (var r in this.map)
+            {
+                var eventMap = this.map[r];
+                for (var e in eventMap)
+                {
+                    var cbMap = eventMap[e];
+                    for (var cbName in cbMap)
+                    {
+                        getRef(r)["off"](e, cbMap[cbName]);
+                    }
+                }
+                delete this.map[r];
+            }
+        }
+	};
+    CallbackMapKlassProto.getDebuggerValues = function (propsections)
+    {
+        var r, eventMap, e, cbMap, cn, display;
+        for (r in this.map)
+        {
+            eventMap = this.map[r];
+            for (e in eventMap)
+            {
+                cbMap = eventMap[e];
+                for (cn in cbMap)
+                {
+                    display = cn+":"+e+"-"+r;
+                    propsections.push({"name": display, "value": ""});
+                }
+            }
+        }
+    };
+    CallbackMapKlassProto.GetRefMap = function ()
+    {
+        return this.map;
+    };
+	window.FirebaseCallbackMapKlass = CallbackMapKlass;
+    var getValueByKeyPath = function (item, k, default_value)
+    {
+        var v;
+        if (item == null)
+            v = null;
+        else if ((k == null) || (k === ""))
+            v = item;
+        else if (typeof(item) !== "object")
+            v = null;
+        else if (k.indexOf(".") === -1)
+            v = item[k];
+        else
+        {
+            v = item;
+            var keys = k.split(".");
+            var i, cnt=keys.length;
+            for(i=0; i<cnt; i++)
+            {
+                v = v[ keys[i] ];
+                if (v == null)
+                    break;
+            }
+        }
+        return din(v, default_value);
+    }
+    var din = function (d, default_value)
+    {
+        var o;
+	    if (d === true)
+	        o = 1;
+	    else if (d === false)
+	        o = 0;
+        else if (d == null)
+        {
+            if (default_value != null)
+                o = default_value;
+            else
+                o = 0;
+        }
+        else if (typeof(d) == "object")
+            o = JSON.stringify(d);
+        else
+            o = d;
+	    return o;
+    };
+	window.FirebaseGetValueByKeyPath = getValueByKeyPath;
+}());
+/*
+# filter to monitor opened rooms
+room-filter/
+    <roomID>
+        filter -  close/open + "|" + public/private/...
+        name - The display name of the room.
+# header of room, write by owner of room. Each room has unique roomID.
+# read it when joining the room
+room-metadata/
+    <roomID>
+        name - The display name of the room.
+        # monitor filter to catch room open/close event
+        filter -  close/open + "|" + public/private/...
+        # moderators of this room
+        moderators/
+            <userID> - userName
+        # join permission
+        permission - null("anyone")/("black-list")/("white-list")
+        black-list/
+            <userID> - userName
+        white-list/
+            <userID> - userName
+        # ignore room if user can not join
+        maxPeers - The maximum number of peers that can join this room.
+        # limit the amount of users
+        extra/
+# body of room data. Each room has unique roomID.
+rooms/
+    <roomID>
+        alive - true or null
+        # users in this room.
+        users/
+            <joinAt>
+                ID - The id of the user.
+                # monitor ID == null for "user kicked-out"
+                name - The name of the user.
+        <"channel-"+channel_name> - custom channel
+# write by each user, user could join to many rooms.
+user-metadata\
+    <joinAt>
+        user/
+            ID - The id of the user.
+            name - The display name of the user.
+        room/
+            ID - The id of the room
+            name - The display name of the room.
+*/
+;
+;
+cr.plugins_.Rex_Firebase_Rooms = function(runtime)
+{
+	this.runtime = runtime;
+};
+(function ()
+{
+	var pluginProto = cr.plugins_.Rex_Firebase_Rooms.prototype;
+	pluginProto.Type = function(plugin)
+	{
+		this.plugin = plugin;
+		this.runtime = plugin.runtime;
+	};
+	var typeProto = pluginProto.Type.prototype;
+	typeProto.onCreate = function()
+	{
+	};
+	pluginProto.Instance = function(type)
+	{
+		this.type = type;
+		this.runtime = type.runtime;
+	};
+	var instanceProto = pluginProto.Instance.prototype;
+    var ROOMOPEN = "open";
+    var ROOMCLOSED = "closed";
+    var LIFE_TEMPORARY = 0;
+    var LIFE_PERSISTED = 1;
+    var JOINPERMINNSION = [null /*"anyone"*/, "black-list", "white-list"];
+    var DOORSTATES = [ROOMCLOSED, ROOMOPEN];
+    var LEAVEDELAY = 10;
+	instanceProto.onCreate = function()
+	{
+	    this.rootpath = this.properties[0] + "/" + this.properties[1] + "/";
+        this.LockedByAction = false;
+	    this.triggeredRoomName = "";
+	    this.triggeredRoomID = "";
+	    this.triggeredUserName = "";
+	    this.triggeredUserID = "";
+        this.exp_CurRoom = null;
+        this.exp_CurUser = null;
+        this.exp_LoopIndex = 0;
+        this.room = new RoomMgrKlass(this);
+        this.room.doorAutoControl = (this.properties[2] === 1);
+        this.roomsList = new RoomsListKlass(this);
+        this.usersList = this.room.usersList;
+	};
+	var isFirebase3x = function()
+	{
+        return (window["FirebaseV3x"] === true);
+    };
+    var isFullPath = function (p)
+    {
+        return (p.substring(0,8) === "https://");
+    };
+	instanceProto.get_ref = function(k)
+	{
+        if (k == null)
+	        k = "";
+	    var path;
+	    if (isFullPath(k))
+	        path = k;
+	    else
+	        path = this.rootpath + k + "/";
+        if (!isFirebase3x())
+        {
+            return new window["Firebase"](path);
+        }
+        else
+        {
+            var fnName = (isFullPath(path))? "refFromURL":"ref";
+            return window["Firebase"]["database"]()[fnName](path);
+        }
+	};
+    var get_key = function (obj)
+    {
+        return (!isFirebase3x())?  obj["key"]() : obj["key"];
+    };
+    var get_refPath = function (obj)
+    {
+        return (!isFirebase3x())?  obj["ref"]() : obj["ref"];
+    };
+    var get_root = function (obj)
+    {
+        return (!isFirebase3x())?  obj["root"]() : obj["root"];
+    };
+    var serverTimeStamp = function ()
+    {
+        if (!isFirebase3x())
+            return window["Firebase"]["ServerValue"]["TIMESTAMP"];
+        else
+            return window["Firebase"]["database"]["ServerValue"];
+    };
+    var get_timestamp = function (obj)
+    {
+        return (!isFirebase3x())?  obj : obj["TIMESTAMP"];
+    };
+	instanceProto.get_room_ref = function(roomID)
+	{
+        var ref = this.get_ref("rooms");
+        if (roomID)
+            ref = ref["child"](roomID);
+	    return ref;
+	};
+	instanceProto.get_roomUser_ref = function(roomID, joinAt)
+	{
+        var ref = this.get_room_ref(roomID)["child"]("users");
+        if (joinAt != null)
+            ref = ref["child"](joinAt);
+	    return ref;
+	};
+	instanceProto.get_roomAliveFlag_ref = function(roomID)
+	{
+	    return this.get_room_ref(roomID)["child"]("alive");
+	};
+	instanceProto.get_roomfilter_ref = function(roomID)
+	{
+	    var ref = this.get_ref("room-filter");
+	    if (roomID != null)
+	        ref = ref["child"](roomID);
+	    return ref;
+	};
+	instanceProto.get_roommetadata_ref = function(roomID)
+	{
+	    var ref = this.get_ref("room-metadata");
+	    if (roomID != null)
+	        ref = ref["child"](roomID);
+	    return ref;
+	};
+	instanceProto.get_usermetadata_ref = function(userID)
+	{
+	    return this.get_ref("user-metadata")["child"](userID);
+	};
+    var getFilter = function(state, type_)
+	{
+        var val = state+"|"+type_;
+	    return val;
+	};
+    var parseFilter = function(filter)
+    {
+        var arr = filter.split("|");
+        var state = arr[0];
+        var type = arr[1];
+        return [state, type];
+    }
+    var get_roomState = function (filter)
+    {
+        return filter.split("|")[0];
+    };
+    instanceProto.run_room_trigger = function(trig, roomName, roomID)
+	{
+        var self=this;
+        setTimeout(function()
+        {
+	        self.triggeredRoomName = roomName;
+	        self.triggeredRoomID = roomID;
+		    self.runtime.trigger(trig, self);
+        }, 0);
+	};
+    instanceProto.run_userlist_trigger = function(trig, userName, userID)
+	{
+        var self=this;
+        setTimeout(function()
+        {
+	        self.triggeredUserName = userName;
+	        self.triggeredUserID = userID;
+		    self.runtime.trigger(trig, self);
+        }, 0);
+	};
+	function Cnds() {};
+	pluginProto.cnds = new Cnds();
+	Cnds.prototype.OnCreateRoom = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.OnCreateRoomError = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.OnJoinRoom = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.OnJoinRoomError = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.OnLeftRoom = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.OnKicked = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.OnOpened = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.OnClosed = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.IsInRoom = function ()
+	{
+	    return this.room.IsInRoom();
+	};
+	Cnds.prototype.OnUpdateRoomsList = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.ForEachRoom = function (start, end)
+	{
+		return this.roomsList.ForEachRoom(start, end);
+	};
+	Cnds.prototype.OnUpdateUsersList = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.ForEachUser = function (start, end)
+	{
+		return this.usersList.ForEachUser(start, end);
+	};
+	Cnds.prototype.OnUserJoin = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.OnUserLeft = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.IsFirstUser = function ()
+	{
+	    return this.usersList.isFirstUser();
+	};
+	Cnds.prototype.IsFull = function ()
+	{
+	    return this.usersList.IsFull();
+	};
+	Cnds.prototype.OnBecomeFirstUser = function ()
+	{
+	    return true;
+	};
+	Cnds.prototype.ForEachUserInPermissionList = function (listType)
+	{
+        var listName = (listType === 1)? "black-list" : "white-list";
+        var permissionList = (this.room.metadata)? this.room.metadata[listName] : null;
+        if (permissionList == null)
+            return false;
+        var current_frame = this.runtime.getCurrentEventStack();
+        var current_event = current_frame.current_event;
+		var solModifierAfterCnds = current_frame.isModifierAfterCnds();
+		var userID, user;
+        this.exp_CurUser = {};
+        this.exp_LoopIndex = -1;
+		for(userID in permissionList)
+		{
+            if (solModifierAfterCnds)
+            {
+                this.runtime.pushCopySol(current_event.solModifiers);
+            }
+            this.exp_CurUser["ID"] = userID
+            this.exp_CurUser["name"] = permissionList[userID];
+            this.exp_LoopIndex ++;
+            current_event.retrigger();
+		    if (solModifierAfterCnds)
+		    {
+		        this.runtime.popSol(current_event.solModifiers);
+		    }
+		}
+        this.exp_CurUser = null;
+		return false;
+	};
+	Cnds.prototype.IsLocked = function ()
+	{
+	    return this.LockedByAction;
+	};
+	Cnds.prototype.OnGetUsersList = function ()
+	{
+	    return true;
+	};
+	function Acts() {};
+	pluginProto.acts = new Acts();
+    Acts.prototype.SetUserInfo = function (userID, name)
+	{
+        if (userID == "")
+        {
+            console.error("rex_firebase_rooms: UserID should not be empty string.");
+            return;
+        }
+        this.room.SetUser(userID, name);
+	};
+    Acts.prototype.CreateRoom = function (roomName, roomType, maxPeers, lifePeriod, doorState, roomID, createThenJoin)
+	{
+        this.LockedByAction = true;
+        var self = this;
+        var on_end = function ()
+        {
+            self.LockedByAction = false;
+        }
+        doorState = DOORSTATES[doorState];
+        createThenJoin = (createThenJoin === 1);
+        if (createThenJoin)
+        {
+            var on_create = function (error)
+            {
+                if ((roomID !== "") && error)
+                {
+                    self.room.TryJoinRoom(roomID, on_end);
+                }
+            };
+            var on_left = function (error)
+            {
+                if (error)
+                {
+                    on_end();
+                    return;
+                }
+                setTimeout(function()
+                {
+                    self.room.TryCreateRoom(roomName, roomType, maxPeers, lifePeriod, doorState, roomID, createThenJoin, on_create);
+                }, LEAVEDELAY);
+            }
+            if (this.room.IsInRoom())
+            {
+                this.room.LeaveRoom(on_left);
+            }
+            else
+                this.room.TryCreateRoom(roomName, roomType, maxPeers, lifePeriod, doorState, roomID, createThenJoin, on_create);
+        }
+        else  // create room only
+        {
+            this.room.TryCreateRoom(roomName, roomType, maxPeers, lifePeriod, doorState, roomID, createThenJoin, on_end);
+        }
+	};
+    Acts.prototype.SwitchDoor = function (doorState)
+	{
+        doorState = DOORSTATES[doorState];
+        this.room.SwitchDoor(doorState);
+	};
+    Acts.prototype.JoinRoom = function (roomID, leftThenJoin)
+	{
+        this.LockedByAction = true;
+        var self = this;
+        var on_end = function ()
+        {
+            self.LockedByAction = false;
+        };
+        var try_join = function (error)
+        {
+            if (error || (roomID === ""))
+            {
+                on_end();
+                self.run_room_trigger(cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnJoinRoomError, "", "");
+                return;
+            }
+            setTimeout(function()
+            {
+                self.room.TryJoinRoom(roomID, on_end);
+            }, LEAVEDELAY);
+        }
+        if (leftThenJoin===0)
+            try_join();
+        else
+            this.room.LeaveRoom(try_join);
+	};
+    Acts.prototype.LeaveRoom = function ()
+	{
+        this.LockedByAction = true;
+        var self = this;
+        var on_end = function ()
+        {
+            self.LockedByAction = false;
+        };
+        this.room.LeaveRoom(on_end);
+	};
+    Acts.prototype.KickUser = function (userID)
+	{
+        this.room.KickUser(userID);
+	};
+    Acts.prototype.UpdateOpenRoomsList = function (roomType)
+	{
+        this.roomsList.UpdateOpenRoomsList(roomType);
+	};
+    Acts.prototype.StopUpdatingOpenRoomsList = function ()
+	{
+        this.roomsList.StopUpdatingOpenRoomsList();
+	};
+    Acts.prototype.PermissionListAdd = function (userID, name, listType)
+	{
+        var listName = (listType === 1)? "black-list" : "white-list";
+        this.room.SetPermissionList(listName, userID, name);
+	};
+    Acts.prototype.PermissionListRemove = function (userID, listType)
+	{
+        var listName = (listType === 1)? "black-list" : "white-list";
+        this.room.SetPermissionList(listName, userID, null);
+	};
+    Acts.prototype.RequestMetadata = function ()
+	{
+        this.room.RequestMetadata();
+	};
+    Acts.prototype.RequestUserMetadata = function (userID)
+	{
+	};
+    Acts.prototype.JoinRandomRoom = function (leftThenJoin, retry)
+	{
+        var roomID = "";
+        this.LockedByAction = true;
+        var self = this;
+        var on_end = function (failed)
+        {
+            self.LockedByAction = false;
+            if (failed)
+            {
+                self.run_room_trigger(cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnJoinRoomError, "", "");
+            }
+            else
+            {
+                var roomName = self.room.roomName;
+                var roomID = self.room.roomID;
+                self.run_room_trigger(cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnJoinRoom, roomName, roomID);
+            }
+        };
+        var on_join = function (error)
+        {
+            if (error)
+                main();
+            else
+                on_end();
+        };
+        var try_join = function (error)
+        {
+            if (error || (roomID === ""))
+            {
+                on_end(true);
+                return;
+            }
+            setTimeout(function()
+            {
+                self.room.TryJoinRoom(roomID, on_join, true);  // ignore trigger
+            }, LEAVEDELAY);
+        }
+        var main = function ()
+        {
+            if (retry < 0)
+            {
+                on_end(true);
+                return;
+            }
+            retry -= 1;
+            var rooms = self.roomsList.GetRooms();
+            var idx = Math.floor( Math.random() * rooms.length );
+            var room = rooms[idx];
+            roomID = (room)? room["roomID"]:"";
+            if (leftThenJoin===0)
+                try_join();
+            else
+                self.room.LeaveRoom(try_join);
+        }
+        main();
+	};
+    Acts.prototype.GetUsersList = function (roomID)
+	{
+        var on_read = function (snapshot)
+        {
+            var val = snapshot["val"]();
+        }
+        var usersList_ref = this.get_roomUser_ref(roomID);
+        usersList_ref["once"]("value", on_read);
+	};
+	function Exps() {};
+	pluginProto.exps = new Exps();
+	Exps.prototype.UserName = function (ret)
+	{
+		ret.set_string(this.room.userName);
+	};
+	Exps.prototype.UserID = function (ret)
+	{
+		ret.set_string(this.room.userID);
+	};
+	Exps.prototype.MyUserName = Exps.prototype.UserName;
+	Exps.prototype.MyUserID = Exps.prototype.UserID;
+	Exps.prototype.RoomName = function (ret)
+	{
+		ret.set_string(this.room.roomName);
+	};
+	Exps.prototype.RoomID = function (ret)
+	{
+		ret.set_string(this.room.roomID);
+	};
+	Exps.prototype.TriggeredRoomName = function (ret)
+	{
+		ret.set_string(this.triggeredRoomName);
+	};
+	Exps.prototype.TriggeredRoomID = function (ret)
+	{
+		ret.set_string(this.triggeredRoomID);
+	};
+	Exps.prototype.CurRoomName = function (ret)
+	{
+        var room = this.exp_CurRoom;
+        var name = (room)? room["name"]:"";
+		ret.set_string(name);
+	};
+	Exps.prototype.CurRoomID = function (ret)
+	{
+        var room = this.exp_CurRoom;
+        var ID = (room)? room["roomID"]:"";
+		ret.set_string(ID);
+	};
+	Exps.prototype.CurCreatorName = function (ret)
+	{
+        var room = this.exp_CurRoom;
+        var name;
+        if (room)
+        {
+            var user = room["moderators"];
+            for(var ID in user)
+            {
+                name = user[ID];
+                break;
+            }
+        }
+        if (name == null)
+            name = "";
+		ret.set_string(name);
+	};
+	Exps.prototype.CurCreatorID = function (ret)
+	{
+        var room = this.exp_CurRoom;
+        var ID;
+        if (room)
+        {
+            var user = room["moderators"];
+            for(ID in user)
+            {
+                break;
+            }
+        }
+        if (ID == null)
+            ID = "";
+		ret.set_string(ID);
+	};
+	Exps.prototype.Index2RoomName = function (ret, index)
+	{
+        var room = this.roomsList.GetRooms()[index];
+        var name = (room)? room["name"]:"";
+		ret.set_string(name);
+	};
+	Exps.prototype.Index2RoomID = function (ret, index)
+	{
+        var room = this.roomsList.GetRooms()[index];
+        var ID = (room)? room["roomID"]:"";
+		ret.set_string(ID);
+	};
+	Exps.prototype.RoomsCount = function (ret, index)
+	{
+		ret.set_int(this.roomsList.GetRooms().length);
+	};
+	Exps.prototype.CurUserName = function (ret)
+	{
+        var user = this.exp_CurUser;
+        var name = (user)? user["name"]:"";
+		ret.set_string(name);
+	};
+	Exps.prototype.CurUserID = function (ret)
+	{
+        var user = this.exp_CurUser;
+        var ID = (user)? user["ID"]:"";
+		ret.set_string(ID);
+	};
+    Exps.prototype.Index2UserName = function (ret, index)
+	{
+        var user = this.usersList.usersList.GetItems()[index];
+        var name = (user)? user["name"]:"";
+		ret.set_string(name);
+	};
+	Exps.prototype.Index2UserID = function (ret, index)
+	{
+        var user = this.usersList.usersList.GetItems()[index];
+        var ID = (user)? user["ID"]:"";
+		ret.set_string(ID);
+	};
+	Exps.prototype.TriggeredUserName = function (ret)
+	{
+		ret.set_string(this.triggeredUserName);
+	};
+	Exps.prototype.TriggeredUserID = function (ret)
+	{
+		ret.set_string(this.triggeredUserID);
+	};
+	Exps.prototype.UsersCount = function (ret)
+	{
+		ret.set_int(this.usersList.usersList.GetItems().length);
+	};
+	Exps.prototype.CurRoomMaxPeers = function (ret)
+	{
+        var room = this.exp_CurRoom;
+        var maxPeers = (room)? (room["maxPeers"] || 0) : 0;
+		ret.set_int(maxPeers);
+	};
+    Exps.prototype.Index2RoomMaxPeers = function (ret, index)
+	{
+        var room = this.roomsList.GetRooms()[index];
+        var maxPeers = (room)? (room["maxPeers"] || 0) : 0;
+		ret.set_int(maxPeers);
+	};
+	Exps.prototype.WhiteListToJSON = function (ret)
+	{
+        var permissionList;
+        if (this.room.metadata)
+            permissionList = this.room.metadata["white-list"];
+        if (permissionList == null)
+            permissionList = {}
+		ret.set_string(JSON.stringify(permissionList));
+	};
+	Exps.prototype.BlackListToJSON = function (ret)
+	{
+        var permissionList;
+        if (this.room.metadata)
+            permissionList = this.room.metadata["black-list"];
+        if (permissionList == null)
+            permissionList = {}
+		ret.set_string(JSON.stringify(permissionList));
+	};
+	Exps.prototype.ChannelRef = function (ret, name, roomID)
+	{
+        if (roomID == null)
+            roomID = this.room.roomID;
+        var path = this.rootpath + "/rooms/" + roomID +"/";
+        if (name != null)
+            path += "channel-"+name + "/";
+	    ret.set_string(path);
+	};
+	Exps.prototype.LoopIndex = function (ret)
+	{
+	    ret.set_int(this.exp_LoopIndex);
+	};
+    var RoomMgrKlass = function (plugin)
+    {
+        this.plugin = plugin;
+        this.doorAutoControl = true;
+	    this.isRemoveRoomWhenLeft = false;
+        this.manualLeave = false;
+        this.userID = "";
+        this.userName = "";
+        this.roomID = "";
+        this.roomName = "";
+        this.roomType = "";
+        this.maxPeers = 0;
+        this.metadata = null;
+        this.doorState = null;
+        this.isFullSave = false;
+        this.is_creater = false;
+        this.joinAt = "";
+        this.monitor_ref = [];
+        this.usersList = new UsersListKlass(this);
+    };
+    var RoomMgrKlassProto = RoomMgrKlass.prototype;
+    RoomMgrKlassProto.SetUser = function (userID, name)
+    {
+        this.userID = userID;
+        this.userName = name;
+    };
+	RoomMgrKlassProto.IsInRoom = function()
+	{
+	    return (this.roomID !== "");
+	};
+    RoomMgrKlassProto.TryCreateRoom = function (roomName, roomType, maxPeers, lifePeriod, doorState, roomID, createThenJoin,
+                                                onComplete, ignoreTrigger)
+	{
+        if (this.IsInRoom())
+        {
+            if (onComplete)
+                onComplete(true);
+            return;
+        }
+        var self = this;
+        var on_create_room_complete = function(error, metadata)
+        {
+            if (error)
+            {
+                on_create_room_error();
+                return;
+            }
+            if (createThenJoin)
+            {
+                self.roomID = roomID;
+                self.roomName = roomName;
+                self.roomType = roomType;
+                self.maxPeers = maxPeers;
+            }
+            if (!ignoreTrigger)
+            {
+                var trig = cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnCreateRoom;
+                self.plugin.run_room_trigger(trig, roomName, roomID);
+            }
+			self.onJoinRoom(roomID, metadata, onComplete, ignoreTrigger);
+			if (onComplete)
+			    onComplete();
+        };
+        var on_create_room_error = function()
+        {
+            if (!ignoreTrigger)
+            {
+                var trig = cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnCreateRoomError;
+                self.plugin.run_room_trigger(trig, roomName, roomID);
+            }
+			if (onComplete)
+			    onComplete(true);
+        };
+        if (roomID == "")
+        {
+            roomID = get_key( this.plugin.get_room_ref()["push"]() );
+            this.createRoom(roomName, roomType, maxPeers, lifePeriod, doorState, roomID, createThenJoin,
+                             on_create_room_complete);
+        }
+        else  // roomID !== ""
+        {
+            var self=this;
+            var on_write_userID = function(current_value)
+            {
+                if (current_value === null)
+                    return true;
+                else
+                    return;    // Abort the transaction
+            };
+            var on_write_userID_complete = function(error, committed, snapshot)
+            {
+                if (error || !committed)
+                {
+                    on_create_room_error();
+                }
+                else
+                {
+                    self.createRoom(roomName, roomType, maxPeers, lifePeriod, doorState, roomID, createThenJoin,
+                                     on_create_room_complete);
+                }
+            };
+            var ref = this.plugin.get_roomAliveFlag_ref(roomID);
+            ref["transaction"](on_write_userID, on_write_userID_complete);
+        }
+	};
+    RoomMgrKlassProto.SwitchDoor = function (doorState)
+	{
+        if (!this.IsInRoom())
+            return;
+        this.SetDoorState(doorState);
+	};
+    RoomMgrKlassProto.isRoomOpened = function (metadata)
+    {
+        if (metadata == null)
+            return false;
+        var state = get_roomState(metadata["filter"]);
+        if (state === ROOMCLOSED)
+            return false;
+        var IamModerators = metadata["moderators"].hasOwnProperty(this.userID);
+        if (IamModerators)
+            return true;
+        var permission = metadata["permission"];
+        if (permission === "black-list")
+        {
+            var blackList = metadata["black-list"];
+            if (blackList && blackList.hasOwnProperty(this.userID))
+                return false;
+            else
+                return true;
+        }
+        else if (permission === "white-list")
+        {
+            var whiteList = metadata["white-list"];
+            if (whiteList && whiteList.hasOwnProperty(this.userID))
+                return true;
+            else
+                return true;
+        }
+        else    // permission === "anyone"
+            return true;
+    }
+    RoomMgrKlassProto.TryJoinRoom = function (roomID, onComplete, ignoreTrigger)
+	{
+        if (this.IsInRoom())
+        {
+            if (onComplete)
+                onComplete(true);
+            return;
+        }
+        var self = this;
+        var on_join_complete = function(metadata)
+        {
+            self.onJoinRoom(roomID, metadata, onComplete, ignoreTrigger);
+        };
+        var on_join_errror = function()
+        {
+            if (!ignoreTrigger)
+            {
+                var trig = cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnJoinRoomError;
+                self.plugin.run_room_trigger(trig, "", roomID);
+            }
+			if (onComplete)
+			    onComplete(true);
+        };
+        var check_user_count = function (metadata)
+        {
+            var on_read = function (snapshot)
+            {
+                var isInList = false;
+                snapshot["forEach"](function (childSnapshot)
+                {
+                    var userID = childSnapshot["val"]()["ID"];
+                    isInList = (userID === self.userID);
+	                if (isInList)
+	                    return true;
+                });
+                if (isInList)
+                {
+                    on_join_complete(metadata);
+                }
+                else
+                {
+                    self.removeUsersList(roomID, on_join_errror);
+                }
+            }
+            setTimeout(function()
+            {
+                var usersList_ref = self.plugin.get_roomUser_ref(roomID);
+                usersList_ref["limitToFirst"](metadata["maxPeers"])["once"]("value", on_read);
+            }, 0);
+        };
+        var try_join = function (metadata)
+        {
+            var on_write = function (error)
+            {
+                if (error)
+                {
+                    on_join_errror();
+                    return;
+                }
+                if (metadata["maxPeers"])
+                    check_user_count(metadata);
+                else
+                    on_join_complete(metadata);
+            }
+            self.addUsersList(roomID, on_write);
+        };
+        var check_door = function ()
+        {
+	        var on_read = function (snapshot)
+	        {
+	            var metadata = snapshot["val"]();
+                if (!self.isRoomOpened(metadata))
+                {
+                    on_join_errror();
+                    return;
+                }
+                try_join(metadata);
+	        };
+            var roommetadata_ref = self.plugin.get_roommetadata_ref(roomID);
+            roommetadata_ref["once"]("value", on_read);
+        };
+        check_door();
+        this.pendCommand = "JOIN";
+	};
+    RoomMgrKlassProto.KickUser = function (userID, onComplete)
+	{
+        var user = this.usersList.GetUser(userID);
+        if (user == null)
+        {
+            if (onComplete)
+                onComplete(true);
+            return;
+        }
+        var user_ref = this.plugin.get_roomUser_ref(this.roomID, user["joinAt"]);
+        user_ref["remove"](onComplete);
+    };
+    RoomMgrKlassProto.LeaveRoom = function (onComplete, ignoreTrigger)
+	{
+        if (!this.IsInRoom())
+        {
+            if (onComplete)
+                onComplete(true);
+            return;
+        }
+        this.manualLeave = true;
+         var self=this;
+         var on_left = function(error)
+         {
+             self.pendCommand = null;
+             if (!error)
+             {
+                 self.isRemoveRoomWhenLeft = false;
+                 self.is_creater = false;
+             }
+             if (onComplete)
+                 onComplete(error);
+        };
+        if (this.isRemoveRoomWhenLeft)
+        {
+            this.removeRoom(this.roomID, on_left);
+        }
+        else
+        {
+            this.removeUsersList(this.roomID, on_left);
+        }
+	};
+    RoomMgrKlassProto.SetPermissionList = function (listName, userID, value)
+    {
+        if (!this.IsInRoom())
+            return;
+        var data = {};
+        data["permission"] = listName;
+        if (userID !== "")
+            data[listName + "/" + userID] = value;
+        var metadata_ref = this.plugin.get_roommetadata_ref(this.roomID);
+        metadata_ref["update"](data);
+    };
+    RoomMgrKlassProto.RequestMetadata = function ()
+    {
+        if (!this.IsInRoom())
+            return;
+        var self=this;
+        var on_read = function (snapshot)
+        {
+            self.metadata = snapshot["val"]();
+        }
+        var metadata_ref = this.plugin.get_roommetadata_ref(this.roomID);
+        metadata_ref["once"]("value", on_read);
+    };
+	RoomMgrKlassProto.addUsersList = function(roomID, onComplete)
+	{
+        var usersList_ref = this.plugin.get_roomUser_ref(roomID);
+        var user_ref = usersList_ref["push"]();
+        user_ref["onDisconnect"]()["remove"]();
+        this.joinAt = get_key( user_ref );
+        var userData = {
+            "ID": this.userID,
+            "name": this.userName,
+        };
+        if (onComplete)
+            user_ref["set"](userData, onComplete);
+        var data = {};
+        data[this.joinAt] = userData;
+        return data;
+    };
+    RoomMgrKlassProto.removeUsersList = function (roomID, onComplete)
+	{
+	    if (roomID == null)
+	        roomID = this.roomID;
+        var user_ref = this.plugin.get_roomUser_ref(roomID, this.joinAt);
+        var on_remove = function (error)
+        {
+            if (!error)
+            {
+                user_ref["onDisconnect"]()["cancel"]();
+            }
+            if (onComplete)
+                onComplete(error);
+        }
+        user_ref["remove"](on_remove);
+	};
+	RoomMgrKlassProto.monitorMyStateOn = function ()
+	{
+	    var self = this;
+	    var id_ref = this.plugin.get_roomUser_ref(this.roomID, this.joinAt)["child"]("ID");
+	    var on_value_changed = function (snapshot)
+	    {
+	        var ID = snapshot["val"]();
+	        if (ID != null)
+	            return;
+            self.onLeftRoom();
+	    };
+	    this.monitor_ref.push(id_ref["toString"]());
+	    id_ref["on"]("value", on_value_changed);
+        var filter_ref = this.plugin.get_roommetadata_ref(this.roomID)["child"]("filter");
+        var on_value_changed = function (snapshot)
+        {
+            var filter = snapshot["val"]();
+            if (filter == null)
+                return;
+            var state = get_roomState(filter);
+            if (self.doorState !== state)
+            {
+                var cnds = cr.plugins_.Rex_Firebase_Rooms.prototype.cnds;
+                var trig = (state === ROOMOPEN)? cnds.OnOpened : cnds.OnClosed;
+                self.plugin.run_room_trigger(trig, self.roomName, self.roomID);
+                self.doorState = state;
+            }
+        }
+	    this.monitor_ref.push(filter_ref["toString"]());
+	    filter_ref["on"]("value", on_value_changed);
+	};
+	RoomMgrKlassProto.monitorMyStateOff = function ()
+	{
+	    var i, cnt=this.monitor_ref.length;
+	    for (i=0; i<cnt; i++)
+	    {
+	        this.plugin.get_ref(this.monitor_ref[i])["off"]();
+	    }
+	};
+    RoomMgrKlassProto.createRoom = function (roomName, roomType, maxPeers, lifePeriod, doorState, roomID, createThenJoin,
+                                              onComplete_)
+	{
+        var roomfilter_ref = this.plugin.get_roomfilter_ref(roomID);
+        var metadata_ref = this.plugin.get_roommetadata_ref(roomID);
+        var room_ref = this.plugin.get_room_ref(roomID);
+        this.isRemoveRoomWhenLeft = (lifePeriod === LIFE_TEMPORARY);
+        if (this.isRemoveRoomWhenLeft)
+        {
+            roomfilter_ref["onDisconnect"]()["remove"]();
+            room_ref["onDisconnect"]()["remove"]();
+            metadata_ref["onDisconnect"]()["remove"]();
+        }
+        var filter = getFilter(doorState, roomType);
+        var roomfilter = {
+            "filter": filter,
+            "name": roomName,
+        }
+        var metadata = {
+            "name": roomName,
+            "filter": filter,
+            "moderators":{},
+        };
+        metadata["moderators"][this.userID] = this.userName;
+        if (maxPeers > 0)
+            metadata["maxPeers"] = maxPeers;
+        var roomdata = {
+            "alive": true,
+        };
+        if (createThenJoin)
+        {
+            roomdata["users"] = {};
+            var userData = this.addUsersList(roomID, false);
+            for (var k in userData)
+                roomdata["users"][k] = userData[k];
+        }
+        var data = {};
+        data["room-filter/"+roomID] = roomfilter;
+        data["room-metadata/"+roomID] = metadata;
+        data["rooms/"+roomID] = roomdata;
+        var onComplete = function(error)
+        {
+            if (onComplete_)
+                onComplete_(error, metadata);
+        }
+        var root_ref = this.plugin.get_ref();
+        root_ref["update"](data, onComplete);
+        this.is_creater = true;
+	};
+    RoomMgrKlassProto.removeRoom = function (roomID, onComplete)
+	{
+        var self=this;
+        var on_remove = function(error)
+        {
+            if (!error)
+            {
+                var roomfilter_ref = self.plugin.get_roomfilter_ref(roomID);
+                var metadata_ref = self.plugin.get_roommetadata_ref(roomID);
+                var room_ref = self.plugin.get_room_ref(roomID);
+                roomfilter_ref["onDisconnect"]()["cancel"]();
+                metadata_ref["onDisconnect"]()["cancel"]();
+                room_ref["onDisconnect"]()["cancel"]();
+                if (roomID === self.roomID)
+                {
+                    var user_ref = self.plugin.get_roomUser_ref(roomID, self.joinAt);
+                    user_ref["onDisconnect"]()["cancel"]();
+                    self.joinAt = "";
+                }
+            }
+            if (onComplete)
+                onComplete(error);
+        };
+        var data = {};
+        data["room-filter/"+roomID] = null;
+        data["room-metadata/"+ roomID] = null;
+        data["rooms/"+ roomID] = null;
+        var root_ref = this.plugin.get_ref();
+        root_ref["update"](data, on_remove);
+	};
+	RoomMgrKlassProto.onJoinRoom = function (roomID, metadata, onComplete, ignoreTrigger)
+	{
+        this.metadata = metadata;
+        var filterProps = parseFilter(metadata["filter"]);  // state,type
+        this.roomID = roomID;
+        this.roomName = metadata["name"];
+        this.roomType = filterProps[1];
+        this.maxPeers = metadata["maxPeers"] || 0;
+        this.doorState = null;
+	    this.monitorMyStateOn();
+        var self=this;
+        this.usersList.onInitialize = function ()
+        {
+            if (!ignoreTrigger)
+            {
+                var trig = cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnJoinRoom;
+                self.plugin.run_room_trigger(trig, self.roomName, roomID);
+            }
+            if (onComplete)
+                onComplete();
+            self.usersList.onInitialize = null;
+        }
+	    this.usersList.StartUpdate(roomID, this.maxPeers);
+	};
+    RoomMgrKlassProto.onLeftRoom = function ()
+	{
+        var roomID = this.roomID;
+        var roomName = this.roomName;
+        this.roomID = "";
+        this.roomName = "";
+        this.doorState = null;
+        this.isFullSave = false;
+        this.monitorMyStateOff();
+	    this.usersList.StopUpdate();
+	    this.usersList.Clean();
+        var trig = cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnLeftRoom;
+        this.plugin.run_room_trigger(trig, roomName, roomID);
+        if (!this.manualLeave)
+        {
+            var trig = cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnKicked;
+            this.plugin.run_room_trigger(trig, roomName, roomID);
+        }
+        this.manualLeave = false;
+	};
+    RoomMgrKlassProto.SetDoorState = function (doorState, onComplete)
+	{
+        var filter = getFilter(doorState, this.roomType);
+        var data = {};
+        data["room-filter/"+this.roomID+"/filter"] = filter;
+        data["room-metadata/"+this.roomID+"/filter"] = filter;
+        var root_ref = this.plugin.get_ref();
+        root_ref["update"](data, onComplete);
+	};
+    RoomMgrKlassProto.onUsersListUpdated = function (usersList)
+	{
+        var self=this;
+        setTimeout(function ()
+        {
+            var nowIsFull = self.usersList.IsFull();
+            if (self.doorAutoControl && self.usersList.isFirstUser())
+            {
+                if (self.isFullSave !== nowIsFull)
+                {
+                    var doorState = (nowIsFull)? ROOMCLOSED : ROOMOPEN;
+                    self.SetDoorState( doorState );
+                }
+            }
+            self.isFullSave = nowIsFull;
+        }, 0);
+	};
+	var clean_table = function (o)
+	{
+	    var k;
+	    for (k in o)
+	        delete o[k];
+	};
+    var RoomsListKlass = function (plugin)
+    {
+        this.plugin = plugin;
+        this.myRoom = plugin.room;
+        this.rooms_list = new window.FirebaseItemListKlass();
+        this.rooms_list.keyItemID = "roomID";
+    };
+    var RoomsListKlassProto = RoomsListKlass.prototype;
+    RoomsListKlassProto.UpdateOpenRoomsList = function (roomType)
+	{
+	    var self = this;
+        var on_roomList_update = function (room)
+        {
+            var trig = cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnUpdateRoomsList;
+            self.plugin.run_room_trigger(trig, room["name"], room["roomID"]);
+        };
+        this.rooms_list.onItemAdd = on_roomList_update;
+        this.rooms_list.onItemRemove = on_roomList_update;
+        this.rooms_list.onItemChange = on_roomList_update;
+	    var filter_ref = this.plugin.get_roomfilter_ref();
+	    var query = filter_ref["orderByChild"]("filter");
+        if (roomType != "")
+	        query = query["equalTo"](getFilter(ROOMOPEN, roomType));
+	    else
+            query = query["startAt"](ROOMOPEN)["endAt"](ROOMOPEN+"~");
+	    this.rooms_list.StartUpdate(query);
+	};
+	RoomsListKlassProto.StopUpdatingOpenRoomsList = function()
+	{
+	    this.rooms_list.StopUpdate();
+	};
+	RoomsListKlassProto.ForEachRoom = function (start, end)
+	{
+	    var self = this;
+	    var onGetIterItem = function(item, i)
+	    {
+	        self.plugin.exp_CurRoom = item;
+            self.plugin.exp_LoopIndex = i;
+	    };
+	    this.rooms_list.onGetIterItem = onGetIterItem;
+	    this.rooms_list.ForEachItem(this.plugin.runtime, start, end);
+        this.plugin.exp_CurRoom = null;
+        this.plugin.exp_LoopIndex = 0;
+		return false;
+	};
+	RoomsListKlassProto.GetRooms = function()
+	{
+	    return this.rooms_list.GetItems();
+	};
+    var UsersListKlass = function (room)
+    {
+        this.onInitialize = null;
+        this.plugin = room.plugin;
+        this.myRoom = room;
+        this.usersList = new window.FirebaseItemListKlass();
+        this.userID2joinAt = {};
+        this.room = room;
+        this.roomID = "";
+        this.limit = 0;
+        this.isFirstUserSave = false;
+        this.usersList.keyItemID = "joinAt";
+    };
+    var UsersListKlassProto = UsersListKlass.prototype;
+    UsersListKlassProto.StartUpdate = function (roomID, limit)
+	{
+        if (limit == null)
+            limit = 0;
+        this.StopUpdate();
+        this.roomID = roomID;
+        this.limit = limit;
+	    var self = this;
+        var on_usersList_update = function (item)
+        {
+            var trig = cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnUpdateUsersList;
+            self.plugin.run_userlist_trigger(trig, item["name"], item["ID"]);
+            var isFirstUser = self.isFirstUser();
+            if (isFirstUser && !self.isFirstUserSave)
+            {
+                var trig = cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnBecomeFirstUser;
+                self.plugin.run_userlist_trigger(trig, self.room.userName, self.room.userID);
+            }
+            self.isFirstUserSave = isFirstUser;
+        };
+	    var on_user_join = function (item)
+	    {
+            self.userID2joinAt[ item["ID"] ] = item["joinAt"];
+            if (item["ID"] === self.room.userID)
+            {
+                if (self.onInitialize)
+                    self.onInitialize(self.usersList.GetItems());
+            }
+            var trig = cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnUserJoin;
+            self.plugin.run_userlist_trigger(trig, item["name"], item["ID"]);
+            on_usersList_update(item);
+            self.myRoom.onUsersListUpdated(self.usersList.GetItems());
+	    };
+	    var on_user_left = function (item)
+	    {
+            if (self.userID2joinAt.hasOwnProperty( item["ID"] ))
+                delete self.userID2joinAt[ item["ID"] ];
+            var trig = cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnUserLeft;
+            self.plugin.run_userlist_trigger(trig, item["name"], item["ID"]);
+            on_usersList_update(item);
+            self.myRoom.onUsersListUpdated(self.usersList.GetItems());
+	    };
+	    var query = this.plugin.get_roomUser_ref(this.roomID);
+	    if (limit > 0)
+	        query = query["limitToFirst"](limit);
+        this.usersList.onItemAdd = on_user_join;
+        this.usersList.onItemRemove = on_user_left;
+        this.usersList.onItemChange = on_usersList_update;
+	    this.usersList.StartUpdate(query);
+	};
+	UsersListKlassProto.StopUpdate = function()
+	{
+	    this.usersList.StopUpdate();
+        this.roomID = "";
+        this.limit = 0;
+	};
+	UsersListKlassProto.ForEachUser = function (start, end)
+	{
+	    var self = this;
+	    var onGetIterItem = function(item, i)
+	    {
+	        self.plugin.exp_CurUser = item;
+            self.plugin.exp_LoopIndex = i;
+	    };
+	    this.usersList.onGetIterItem = onGetIterItem;
+	    this.usersList.ForEachItem(this.plugin.runtime, start, end);
+        this.plugin.exp_CurUser = null;
+        this.plugin.exp_LoopIndex = 0;
+		return false;
+	};
+	UsersListKlassProto.Clean = function ()
+	{
+	    this.usersList.Clean();
+	};
+    UsersListKlassProto.IsFull = function ()
+    {
+        if (this.limit === 0)
+            return false;
+        return (this.usersList.GetItems().length >= this.limit);
+    };
+    UsersListKlassProto.isFirstUser = function (userID)
+    {
+        if (userID == null)
+            userID = this.room.userID;
+         var user = this.usersList.GetItems()[0];
+         if (!user)
+             return false;
+         return (user["ID"] === userID);
+    };
+    UsersListKlassProto.GetUser = function (userID)
+    {
+        if (!this.userID2joinAt.hasOwnProperty(userID))
+            return null;
+        var joinAt = this.userID2joinAt[userID];
+        return this.usersList.GetItemByID(joinAt);
+    };
+    var UserMetadataKlass = function (room)
+    {
+        this.room = room;
+        this.plugin = room.plugin;
+        this.ref = null;
+    };
+    var UserMetadataKlassProto = UserMetadataKlass.prototype;
+    UserMetadataKlassProto.Init = function ()
+    {
+        if (this.ref)
+            this.ref["onDisconnect"]()["cancel"]();
+        this.ref = this.plugin.get_usermetadata_ref(this.room.userID);
+        this.ref["onDisconnect"]()["remove"]();
+        this.Update();
+    };
+    UserMetadataKlassProto.Update = function ()
+    {
+	    var metadata = {
+	        "name": this.room.userName,
+	        "roomID": this.room.roomID,
+	        "roomName": this.room.roomName,
+	    };
+	    this.ref["set"](metadata);
+    };
+}());
+/*
+<receiverID>
+    message - message
+    senderID - ID of sender, assume that each senders has an unique ID
+	senderName - name of sender
+	stamp - toggle between true and false
+*/
+;
+;
+cr.plugins_.Rex_Firebase_SimpleMessage = function(runtime)
+{
+	this.runtime = runtime;
+};
+(function ()
+{
+	var pluginProto = cr.plugins_.Rex_Firebase_SimpleMessage.prototype;
+	pluginProto.Type = function(plugin)
+	{
+		this.plugin = plugin;
+		this.runtime = plugin.runtime;
+	};
+	var typeProto = pluginProto.Type.prototype;
+	typeProto.onCreate = function()
+	{
+	};
+	pluginProto.Instance = function(type)
+	{
+		this.type = type;
+		this.runtime = type.runtime;
+	};
+	var instanceProto = pluginProto.Instance.prototype;
+    var OFFLMSG_DISCARD = 0;
+    var OFFLMSG_PEND = 1;
+	instanceProto.onCreate = function()
+	{
+	    this.rootpath = this.properties[0] + "/" + this.properties[1] + "/";
+        this.userID = "";
+        this.userName = "";
+        this.lastReceiverID = null;
+        var message_type = this.properties[2];
+        this.offline_mode = this.properties[3];
+        if (!this.recycled)
+        {
+	        var messageKlass = (this.offline_mode == OFFLMSG_DISCARD)?
+	                           window.FirebaseSimpleMessageKlass: window.FirebaseStackMessageKlass;
+            this.inBox = this.create_inBox(messageKlass, message_type);
+            this.outPort = new messageKlass(message_type);
+        }
+        this.exp_LastMessage = null;
+	};
+	instanceProto.onDestroy = function ()
+	{
+	    this.inBox.StopUpdate();
+	};
+	var isFirebase3x = function()
+	{
+        return (window["FirebaseV3x"] === true);
+    };
+    var isFullPath = function (p)
+    {
+        return (p.substring(0,8) === "https://");
+    };
+	instanceProto.get_ref = function(k)
+	{
+        if (k == null)
+	        k = "";
+	    var path;
+	    if (isFullPath(k))
+	        path = k;
+	    else
+	        path = this.rootpath + k + "/";
+        if (!isFirebase3x())
+        {
+            return new window["Firebase"](path);
+        }
+        else
+        {
+            var fnName = (isFullPath(path))? "refFromURL":"ref";
+            return window["Firebase"]["database"]()[fnName](path);
+        }
+	};
+    var get_key = function (obj)
+    {
+        return (!isFirebase3x())?  obj["key"]() : obj["key"];
+    };
+    var get_root = function (obj)
+    {
+        return (!isFirebase3x())?  obj["root"]() : obj["root"];
+    };
+    instanceProto.create_inBox = function (messageKlass, message_type)
+	{
+	    var self = this;
+	    var on_received = function(d)
+	    {
+	        self.exp_LastMessage = d;
+            var trig = cr.plugins_.Rex_Firebase_SimpleMessage.prototype.cnds.OnReceivedMessage;
+            self.runtime.trigger(trig, self);
+	    };
+	    var simple_message = new messageKlass(message_type);
+	    simple_message.onReceived = on_received;
+        return simple_message;
+    };
+    instanceProto.send_message = function (receiverID, message)
+	{
+        if ((receiverID == null) || (receiverID == ""))
+            return;
+	    if (this.lastReceiverID != receiverID)
+	    {
+            var ref = this.get_ref(receiverID);
+	        this.outPort.SetRef(ref);
+	    }
+	    if (message == null)
+	    {
+	        this.outPort.Send();
+	    }
+	    else
+	    {
+	        this.outPort.Send(message, this.userID, this.userName);
+	    }
+    };
+	function Cnds() {};
+	pluginProto.cnds = new Cnds();
+	Cnds.prototype.OnReceivedMessage = function ()
+	{
+	    return true;
+	};
+	function Acts() {};
+	pluginProto.acts = new Acts();
+    Acts.prototype.SetDomainRef = function (domain_ref, sub_domain_ref)
+	{
+	    this.inBox.StopUpdate();
+	    if (this.offline_mode == OFFLMSG_DISCARD)
+	    {
+	        this.send_message(this.lastReceiverID, null);
+	    }
+        this.lastReceiverID = null;  // re-build outPort in next send_message
+		this.rootpath = domain_ref + "/" + sub_domain_ref + "/";
+	};
+    Acts.prototype.SetUserInfo = function (userID, userName)
+	{
+        this.userID = userID;
+        this.userName = userName;
+	};
+    Acts.prototype.StartUpdate = function (receiverID)
+	{
+	    if (receiverID == "")
+	        return;
+	    var ref = this.get_ref(receiverID);
+	    this.inBox.StartUpdate(ref);
+	};
+    Acts.prototype.StopUpdate = function ()
+	{
+	    this.inBox.StopUpdate();
+	};
+    Acts.prototype.SendMessage = function (receiverID, message)
+	{
+	    if (receiverID == "")
+	        return;
+        this.send_message(receiverID, message);
+        this.lastReceiverID = receiverID;
+	};
+    Acts.prototype.CleanMessageBox = function (receiverID)
+	{
+	    if (receiverID == "")
+	        return;
+        this.send_message(receiverID, null);
+	};
+	function Exps() {};
+	pluginProto.exps = new Exps();
+	Exps.prototype.LastSenderID = function (ret)
+	{
+        var senderID = null;
+        if (this.exp_LastMessage != null)
+            senderID = this.exp_LastMessage["senderID"];
+        if (senderID == null)
+            senderID = "";
+		ret.set_string(senderID);
+	};
+	Exps.prototype.LastSenderName = function (ret)
+	{
+        var senderName = null;
+        if (this.exp_LastMessage != null)
+            senderName = this.exp_LastMessage["senderName"];
+        if (senderName == null)
+            senderName = "";
+		ret.set_string(senderName);
+	};
+	Exps.prototype.LastMessage = function (ret)
+	{
+        var message = null;
+        if (this.exp_LastMessage != null)
+            message = this.exp_LastMessage["message"];
+        if (message == null)
+            message = "";
+		ret.set_string(message);
+	};
+}());
+(function ()
+{
+	var isFirebase3x = function()
+	{
+        return (window["FirebaseV3x"] === true);
+    };
+    var get_refPath = function (obj)
+    {
+        return (!isFirebase3x())?  obj["ref"]() : obj["ref"];
+    };
+    if (window.FirebaseStackMessageKlass != null)
+        return;
+    var MESSAGE_STRING = 0;
+    var MESSAGE_JSON = 1;
+    var StackMessageKlass = function (messageType)
+    {
+        this.onReceived = null
+        this.messageType = messageType;
+        this.ref = null;
+        this.on_read = null;
+    };
+    var StackMessageKlassProto = StackMessageKlass.prototype;
+    StackMessageKlassProto.SetRef = function (ref)
+    {
+        var is_reading = (this.on_read != null);
+        this.StopUpdate();
+        this.ref = ref;
+        if (is_reading)
+            this.StartUpdate();
+    };
+    StackMessageKlassProto.Send = function (message, senderID, senderName)
+    {
+        if (this.ref == null)
+            return;
+        if ((message == null) && (senderID == null) && (senderName == null))
+        {
+            return;
+        }
+        if (this.messageType == MESSAGE_JSON)
+            message = JSON.parse(message);
+        var d = {
+            "message": message,
+            "senderID": senderID,
+            "senderName": senderName,
+        };
+        this.ref["push"](d);
+    };
+    StackMessageKlassProto.StartUpdate = function (ref)
+	{
+        this.StopUpdate();
+        if (ref != null)
+            this.ref = ref;
+        var self = this;
+	    var on_update = function (snapshot)
+	    {
+	        var d = snapshot["val"]();
+            if (self.skip_first)
+            {
+                self.skip_first = false;
+                return;
+            }
+            if (d == null)
+                return;
+            if (self.messageType == MESSAGE_JSON)
+                d["message"] = JSON.stringify(d["message"]);
+            if (self.onReceived)
+                self.onReceived(d);
+            get_refPath(snapshot)["remove"]();
+        };
+        this.ref["limitToFirst"](1)["on"]("child_added", on_update);
+        this.on_read = on_update;
+    };
+    StackMessageKlassProto.StopUpdate = function ()
+	{
+        if (this.on_read == null)
+            return;
+        this.ref["off"]("child_added", this.on_read);
+        this.on_read = null;
+    };
+	window.FirebaseStackMessageKlass = StackMessageKlass;
+}());
+(function ()
+{
+    if (window.FirebaseSimpleMessageKlass != null)
+        return;
+    var MESSAGE_STRING = 0;
+    var MESSAGE_JSON = 1;
+    var SimpleMessageKlass = function (messageType)
+    {
+        this.onReceived = null
+        this.messageType = messageType;
+        this.skip_first = true;
+        this.stamp = false;
+        this.ref = null;
+        this.on_read = null;
+    };
+    var SimpleMessageKlassProto = SimpleMessageKlass.prototype;
+    SimpleMessageKlassProto.SetRef = function (ref)
+    {
+        var is_reading = (this.on_read != null);
+        this.StopUpdate();
+        this.ref = ref;
+        if (is_reading)
+            this.StartUpdate();
+    };
+    SimpleMessageKlassProto.Send = function (message, senderID, senderName)
+    {
+        if (this.ref == null)
+            return;
+        if ((message == null) && (senderID == null) && (senderName == null))
+        {
+            this.ref["remove"]();
+            return;
+        }
+        if (this.messageType == MESSAGE_JSON)
+            message = JSON.parse(message);
+        var d = {
+            "message": message,
+            "senderID": senderID,
+            "senderName": senderName,
+            "stamp" : this.stamp,
+        };
+        this.skip_first = false;
+        this.ref["set"](d);
+        this.stamp = !this.stamp;
+    };
+    SimpleMessageKlassProto.StartUpdate = function (ref)
+	{
+        this.StopUpdate();
+        if (ref != null)
+            this.ref = ref;
+        this.skip_first = true;      // skip previous message
+        var self = this;
+	    var on_update = function (snapshot)
+	    {
+	        var d = snapshot["val"]();
+            if (self.skip_first)
+            {
+                self.skip_first = false;
+                return;
+            }
+            if (d == null)
+                return;
+            if (self.messageType == MESSAGE_JSON)
+                d["message"] = JSON.stringify(d["message"]);
+            if (self.onReceived)
+                self.onReceived(d);
+        };
+        this.ref["on"]("value", on_update);
+        this.on_read = on_update;
+        this.ref["onDisconnect"]()["remove"]();
+    };
+    SimpleMessageKlassProto.StopUpdate = function ()
+	{
+        if (this.on_read == null)
+            return;
+        this.ref["off"]("value", this.on_read);
+        this.on_read = null;
+        this.ref["remove"]();
+        this.ref["onDisconnect"]()["cancel"]();
+    };
+	window.FirebaseSimpleMessageKlass = SimpleMessageKlass;
+}());
+;
+;
 cr.plugins_.Rex_Hash = function(runtime)
 {
 	this.runtime = runtime;
@@ -27430,25 +30379,41 @@ cr.getObjectRefTable = function () { return [
 	cr.plugins_.Function,
 	cr.plugins_.Particles,
 	cr.plugins_.Rex_Comment,
+	cr.plugins_.Rex_Firebase_SimpleMessage,
+	cr.plugins_.Rex_FirebaseAPIV3,
+	cr.plugins_.Rex_Date,
+	cr.plugins_.Rex_Firebase,
+	cr.plugins_.Rex_Firebase_Rooms,
 	cr.plugins_.Rex_Hash,
 	cr.plugins_.Rex_jsshell,
 	cr.plugins_.Rex_MomenJS,
-	cr.plugins_.Rex_taffydb,
 	cr.plugins_.rex_TagText,
+	cr.plugins_.Rex_taffydb,
 	cr.plugins_.Sprite,
 	cr.plugins_.Rex_WaitEvent,
 	cr.plugins_.Rex_WebstorageExt,
-	cr.plugins_.Touch,
 	cr.plugins_.TextBox,
-	cr.plugins_.WebStorage,
 	cr.plugins_.TiledBg,
+	cr.plugins_.WebStorage,
+	cr.plugins_.Touch,
 	cr.behaviors.Rex_Turntable,
 	cr.behaviors.Sin,
 	cr.system_object.prototype.cnds.OnLayoutStart,
 	cr.plugins_.TiledBg.prototype.acts.SetWidth,
 	cr.plugins_.Function.prototype.acts.CallFunction,
-	cr.plugins_.Touch.prototype.cnds.OnTouchEnd,
 	cr.system_object.prototype.acts.SetVar,
+	cr.plugins_.Rex_Date.prototype.exps.UnixTimestamp,
+	cr.plugins_.Rex_Firebase_Rooms.prototype.acts.SetUserInfo,
+	cr.plugins_.Rex_Firebase.prototype.exps.GenerateKey,
+	cr.plugins_.Rex_Firebase_SimpleMessage.prototype.acts.SetUserInfo,
+	cr.plugins_.Rex_Firebase_Rooms.prototype.exps.UserID,
+	cr.plugins_.Rex_Firebase_Rooms.prototype.exps.UserName,
+	cr.plugins_.Rex_Firebase_Rooms.prototype.acts.UpdateOpenRoomsList,
+	cr.plugins_.Rex_Firebase_Rooms.prototype.acts.CreateRoom,
+	cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnUpdateUsersList,
+	cr.plugins_.rex_TagText.prototype.acts.SetText,
+	cr.plugins_.Rex_Firebase_Rooms.prototype.exps.UsersCount,
+	cr.plugins_.Touch.prototype.cnds.OnTouchEnd,
 	cr.system_object.prototype.exps.floor,
 	cr.system_object.prototype.exps.random,
 	cr.behaviors.Rex_Turntable.prototype.acts.StartSpinning,
@@ -27456,7 +30421,7 @@ cr.getObjectRefTable = function () { return [
 	cr.plugins_.Touch.prototype.cnds.IsInTouch,
 	cr.system_object.prototype.exps.dt,
 	cr.behaviors.Rex_Turntable.prototype.cnds.OnHitTarget,
-	cr.plugins_.rex_TagText.prototype.acts.SetText,
+	cr.plugins_.Rex_Firebase_SimpleMessage.prototype.acts.SendMessage,
 	cr.system_object.prototype.cnds.IsGroupActive,
 	cr.plugins_.Function.prototype.cnds.OnFunction,
 	cr.plugins_.Rex_jsshell.prototype.acts.SetFunctionName,
@@ -27492,5 +30457,15 @@ cr.getObjectRefTable = function () { return [
 	cr.system_object.prototype.cnds.Compare,
 	cr.system_object.prototype.exps["int"],
 	cr.plugins_.TextBox.prototype.acts.ScrollToBottom,
-	cr.plugins_.Browser.prototype.acts.ConsoleLog
+	cr.plugins_.Browser.prototype.acts.ConsoleLog,
+	cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnJoinRoom,
+	cr.plugins_.Rex_Firebase_SimpleMessage.prototype.acts.SetDomainRef,
+	cr.plugins_.Rex_Firebase_Rooms.prototype.exps.ChannelRef,
+	cr.plugins_.Rex_Firebase_SimpleMessage.prototype.acts.StartUpdate,
+	cr.plugins_.Rex_Firebase_Rooms.prototype.cnds.OnLeftRoom,
+	cr.plugins_.Rex_Firebase_SimpleMessage.prototype.acts.StopUpdate,
+	cr.plugins_.Rex_Firebase_SimpleMessage.prototype.acts.CleanMessageBox,
+	cr.plugins_.Rex_Firebase_SimpleMessage.prototype.cnds.OnReceivedMessage,
+	cr.plugins_.rex_TagText.prototype.acts.AppendText,
+	cr.plugins_.Rex_Firebase_SimpleMessage.prototype.exps.LastMessage
 ];};
