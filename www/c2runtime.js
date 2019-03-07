@@ -18310,6 +18310,808 @@ cr.plugins_.Audio = function(runtime)
 }());
 ;
 ;
+cr.plugins_.Browser = function(runtime)
+{
+	this.runtime = runtime;
+};
+(function ()
+{
+	var pluginProto = cr.plugins_.Browser.prototype;
+	pluginProto.Type = function(plugin)
+	{
+		this.plugin = plugin;
+		this.runtime = plugin.runtime;
+	};
+	var typeProto = pluginProto.Type.prototype;
+	typeProto.onCreate = function()
+	{
+	};
+	var offlineScriptReady = false;
+	var browserPluginReady = false;
+	document.addEventListener("DOMContentLoaded", function ()
+	{
+		if (window["C2_RegisterSW"] && navigator["serviceWorker"])
+		{
+			var offlineClientScript = document.createElement("script");
+			offlineClientScript.onload = function ()
+			{
+				offlineScriptReady = true;
+				checkReady()
+			};
+			offlineClientScript.src = "offlineClient.js";
+			document.head.appendChild(offlineClientScript);
+		}
+	});
+	var browserInstance = null;
+	typeProto.onAppBegin = function ()
+	{
+		browserPluginReady = true;
+		checkReady();
+	};
+	function checkReady()
+	{
+		if (offlineScriptReady && browserPluginReady && window["OfflineClientInfo"])
+		{
+			window["OfflineClientInfo"]["SetMessageCallback"](function (e)
+			{
+				browserInstance.onSWMessage(e);
+			});
+		}
+	};
+	pluginProto.Instance = function(type)
+	{
+		this.type = type;
+		this.runtime = type.runtime;
+	};
+	var instanceProto = pluginProto.Instance.prototype;
+	instanceProto.onCreate = function()
+	{
+		var self = this;
+		window.addEventListener("resize", function () {
+			self.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnResize, self);
+		});
+		browserInstance = this;
+		if (typeof navigator.onLine !== "undefined")
+		{
+			window.addEventListener("online", function() {
+				self.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnOnline, self);
+			});
+			window.addEventListener("offline", function() {
+				self.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnOffline, self);
+			});
+		}
+		if (!this.runtime.isDirectCanvas)
+		{
+			document.addEventListener("appMobi.device.update.available", function() {
+				self.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnUpdateReady, self);
+			});
+			document.addEventListener("backbutton", function() {
+				self.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnBackButton, self);
+			});
+			document.addEventListener("menubutton", function() {
+				self.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnMenuButton, self);
+			});
+			document.addEventListener("searchbutton", function() {
+				self.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnSearchButton, self);
+			});
+			document.addEventListener("tizenhwkey", function (e) {
+				var ret;
+				switch (e["keyName"]) {
+				case "back":
+					ret = self.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnBackButton, self);
+					if (!ret)
+					{
+						if (window["tizen"])
+							window["tizen"]["application"]["getCurrentApplication"]()["exit"]();
+					}
+					break;
+				case "menu":
+					ret = self.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnMenuButton, self);
+					if (!ret)
+						e.preventDefault();
+					break;
+				}
+			});
+		}
+		if (this.runtime.isWindows10 && typeof Windows !== "undefined")
+		{
+			Windows["UI"]["Core"]["SystemNavigationManager"]["getForCurrentView"]().addEventListener("backrequested", function (e)
+			{
+				var ret = self.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnBackButton, self);
+				if (ret)
+					e["handled"] = true;
+		    });
+		}
+		else if (this.runtime.isWinJS && WinJS["Application"])
+		{
+			WinJS["Application"]["onbackclick"] = function (e)
+			{
+				return !!self.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnBackButton, self);
+			};
+		}
+		this.runtime.addSuspendCallback(function(s) {
+			if (s)
+			{
+				self.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnPageHidden, self);
+			}
+			else
+			{
+				self.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnPageVisible, self);
+			}
+		});
+		this.is_arcade = (typeof window["is_scirra_arcade"] !== "undefined");
+	};
+	instanceProto.onSWMessage = function (e)
+	{
+		var messageType = e["data"]["type"];
+		if (messageType === "downloading-update")
+			this.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnUpdateFound, this);
+		else if (messageType === "update-ready" || messageType === "update-pending")
+			this.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnUpdateReady, this);
+		else if (messageType === "offline-ready")
+			this.runtime.trigger(cr.plugins_.Browser.prototype.cnds.OnOfflineReady, this);
+	};
+	var batteryManager = null;
+	var loadedBatteryManager = false;
+	function maybeLoadBatteryManager()
+	{
+		if (loadedBatteryManager)
+			return;
+		if (!navigator["getBattery"])
+			return;
+		var promise = navigator["getBattery"]();
+		loadedBatteryManager = true;
+		if (promise)
+		{
+			promise.then(function (manager) {
+				batteryManager = manager;
+			});
+		}
+	};
+	function Cnds() {};
+	Cnds.prototype.CookiesEnabled = function()
+	{
+		return navigator ? navigator.cookieEnabled : false;
+	};
+	Cnds.prototype.IsOnline = function()
+	{
+		return navigator ? navigator.onLine : false;
+	};
+	Cnds.prototype.HasJava = function()
+	{
+		return navigator ? navigator.javaEnabled() : false;
+	};
+	Cnds.prototype.OnOnline = function()
+	{
+		return true;
+	};
+	Cnds.prototype.OnOffline = function()
+	{
+		return true;
+	};
+	Cnds.prototype.IsDownloadingUpdate = function ()
+	{
+		return false;		// deprecated
+	};
+	Cnds.prototype.OnUpdateReady = function ()
+	{
+		return true;
+	};
+	Cnds.prototype.PageVisible = function ()
+	{
+		return !this.runtime.isSuspended;
+	};
+	Cnds.prototype.OnPageVisible = function ()
+	{
+		return true;
+	};
+	Cnds.prototype.OnPageHidden = function ()
+	{
+		return true;
+	};
+	Cnds.prototype.OnResize = function ()
+	{
+		return true;
+	};
+	Cnds.prototype.IsFullscreen = function ()
+	{
+		return !!(document["mozFullScreen"] || document["webkitIsFullScreen"] || document["fullScreen"] || this.runtime.isNodeFullscreen);
+	};
+	Cnds.prototype.OnBackButton = function ()
+	{
+		return true;
+	};
+	Cnds.prototype.OnMenuButton = function ()
+	{
+		return true;
+	};
+	Cnds.prototype.OnSearchButton = function ()
+	{
+		return true;
+	};
+	Cnds.prototype.IsMetered = function ()
+	{
+		var connection = navigator["connection"] || navigator["mozConnection"] || navigator["webkitConnection"];
+		if (!connection)
+			return false;
+		return !!connection["metered"];
+	};
+	Cnds.prototype.IsCharging = function ()
+	{
+		var battery = navigator["battery"] || navigator["mozBattery"] || navigator["webkitBattery"];
+		if (battery)
+		{
+			return !!battery["charging"]
+		}
+		else
+		{
+			maybeLoadBatteryManager();
+			if (batteryManager)
+			{
+				return !!batteryManager["charging"];
+			}
+			else
+			{
+				return true;		// if unknown, default to charging (powered)
+			}
+		}
+	};
+	Cnds.prototype.IsPortraitLandscape = function (p)
+	{
+		var current = (window.innerWidth <= window.innerHeight ? 0 : 1);
+		return current === p;
+	};
+	Cnds.prototype.SupportsFullscreen = function ()
+	{
+		if (this.runtime.isNodeWebkit)
+			return true;
+		var elem = this.runtime.canvasdiv || this.runtime.canvas;
+		return !!(elem["requestFullscreen"] || elem["mozRequestFullScreen"] || elem["msRequestFullscreen"] || elem["webkitRequestFullScreen"]);
+	};
+	Cnds.prototype.OnUpdateFound = function ()
+	{
+		return true;
+	};
+	Cnds.prototype.OnUpdateReady = function ()
+	{
+		return true;
+	};
+	Cnds.prototype.OnOfflineReady = function ()
+	{
+		return true;
+	};
+	pluginProto.cnds = new Cnds();
+	function Acts() {};
+	Acts.prototype.Alert = function (msg)
+	{
+		if (!this.runtime.isDomFree)
+			alert(msg.toString());
+	};
+	Acts.prototype.Close = function ()
+	{
+		if (this.runtime.isCocoonJs)
+			CocoonJS["App"]["forceToFinish"]();
+		else if (window["tizen"])
+			window["tizen"]["application"]["getCurrentApplication"]()["exit"]();
+		else if (navigator["app"] && navigator["app"]["exitApp"])
+			navigator["app"]["exitApp"]();
+		else if (navigator["device"] && navigator["device"]["exitApp"])
+			navigator["device"]["exitApp"]();
+		else if (!this.is_arcade && !this.runtime.isDomFree)
+			window.close();
+	};
+	Acts.prototype.Focus = function ()
+	{
+		if (this.runtime.isNodeWebkit)
+		{
+			var win = window["nwgui"]["Window"]["get"]();
+			win["focus"]();
+		}
+		else if (!this.is_arcade && !this.runtime.isDomFree)
+			window.focus();
+	};
+	Acts.prototype.Blur = function ()
+	{
+		if (this.runtime.isNodeWebkit)
+		{
+			var win = window["nwgui"]["Window"]["get"]();
+			win["blur"]();
+		}
+		else if (!this.is_arcade && !this.runtime.isDomFree)
+			window.blur();
+	};
+	Acts.prototype.GoBack = function ()
+	{
+		if (navigator["app"] && navigator["app"]["backHistory"])
+			navigator["app"]["backHistory"]();
+		else if (!this.is_arcade && !this.runtime.isDomFree && window.back)
+			window.back();
+	};
+	Acts.prototype.GoForward = function ()
+	{
+		if (!this.is_arcade && !this.runtime.isDomFree && window.forward)
+			window.forward();
+	};
+	Acts.prototype.GoHome = function ()
+	{
+		if (!this.is_arcade && !this.runtime.isDomFree && window.home)
+			window.home();
+	};
+	Acts.prototype.GoToURL = function (url, target)
+	{
+		if (this.runtime.isCocoonJs)
+			CocoonJS["App"]["openURL"](url);
+		else if (this.runtime.isEjecta)
+			ejecta["openURL"](url);
+		else if (this.runtime.isWinJS)
+			Windows["System"]["Launcher"]["launchUriAsync"](new Windows["Foundation"]["Uri"](url));
+		else if (navigator["app"] && navigator["app"]["loadUrl"])
+			navigator["app"]["loadUrl"](url, { "openExternal": true });
+		else if (this.runtime.isCordova)
+			window.open(url, "_system");
+		else if (!this.is_arcade && !this.runtime.isDomFree)
+		{
+			if (target === 2 && !this.is_arcade)		// top
+				window.top.location = url;
+			else if (target === 1 && !this.is_arcade)	// parent
+				window.parent.location = url;
+			else					// self
+				window.location = url;
+		}
+	};
+	Acts.prototype.GoToURLWindow = function (url, tag)
+	{
+		if (this.runtime.isCocoonJs)
+			CocoonJS["App"]["openURL"](url);
+		else if (this.runtime.isEjecta)
+			ejecta["openURL"](url);
+		else if (this.runtime.isWinJS)
+			Windows["System"]["Launcher"]["launchUriAsync"](new Windows["Foundation"]["Uri"](url));
+		else if (navigator["app"] && navigator["app"]["loadUrl"])
+			navigator["app"]["loadUrl"](url, { "openExternal": true });
+		else if (this.runtime.isCordova)
+			window.open(url, "_system");
+		else if (!this.is_arcade && !this.runtime.isDomFree)
+			window.open(url, tag);
+	};
+	Acts.prototype.Reload = function ()
+	{
+		if (!this.is_arcade && !this.runtime.isDomFree)
+			window.location.reload();
+	};
+	var firstRequestFullscreen = true;
+	var crruntime = null;
+	function onFullscreenError(e)
+	{
+		if (console && console.warn)
+			console.warn("Fullscreen request failed: ", e);
+		crruntime["setSize"](window.innerWidth, window.innerHeight);
+	};
+	Acts.prototype.RequestFullScreen = function (stretchmode)
+	{
+		if (this.runtime.isDomFree)
+		{
+			cr.logexport("[Construct 2] Requesting fullscreen is not supported on this platform - the request has been ignored");
+			return;
+		}
+		if (stretchmode >= 2)
+			stretchmode += 1;
+		if (stretchmode === 6)
+			stretchmode = 2;
+		if (this.runtime.isNodeWebkit)
+		{
+			if (this.runtime.isDebug)
+			{
+				debuggerFullscreen(true);
+			}
+			else if (!this.runtime.isNodeFullscreen && window["nwgui"])
+			{
+				window["nwgui"]["Window"]["get"]()["enterFullscreen"]();
+				this.runtime.isNodeFullscreen = true;
+				this.runtime.fullscreen_scaling = (stretchmode >= 2 ? stretchmode : 0);
+			}
+		}
+		else
+		{
+			if (document["mozFullScreen"] || document["webkitIsFullScreen"] || !!document["msFullscreenElement"] || document["fullScreen"] || document["fullScreenElement"])
+			{
+				return;
+			}
+			this.runtime.fullscreen_scaling = (stretchmode >= 2 ? stretchmode : 0);
+			var elem = document.documentElement;
+			if (firstRequestFullscreen)
+			{
+				firstRequestFullscreen = false;
+				crruntime = this.runtime;
+				elem.addEventListener("mozfullscreenerror", onFullscreenError);
+				elem.addEventListener("webkitfullscreenerror", onFullscreenError);
+				elem.addEventListener("MSFullscreenError", onFullscreenError);
+				elem.addEventListener("fullscreenerror", onFullscreenError);
+			}
+			if (elem["requestFullscreen"])
+				elem["requestFullscreen"]();
+			else if (elem["mozRequestFullScreen"])
+				elem["mozRequestFullScreen"]();
+			else if (elem["msRequestFullscreen"])
+				elem["msRequestFullscreen"]();
+			else if (elem["webkitRequestFullScreen"])
+			{
+				if (typeof Element !== "undefined" && typeof Element["ALLOW_KEYBOARD_INPUT"] !== "undefined")
+					elem["webkitRequestFullScreen"](Element["ALLOW_KEYBOARD_INPUT"]);
+				else
+					elem["webkitRequestFullScreen"]();
+			}
+		}
+	};
+	Acts.prototype.CancelFullScreen = function ()
+	{
+		if (this.runtime.isDomFree)
+		{
+			cr.logexport("[Construct 2] Exiting fullscreen is not supported on this platform - the request has been ignored");
+			return;
+		}
+		if (this.runtime.isNodeWebkit)
+		{
+			if (this.runtime.isDebug)
+			{
+				debuggerFullscreen(false);
+			}
+			else if (this.runtime.isNodeFullscreen && window["nwgui"])
+			{
+				window["nwgui"]["Window"]["get"]()["leaveFullscreen"]();
+				this.runtime.isNodeFullscreen = false;
+			}
+		}
+		else
+		{
+			if (document["exitFullscreen"])
+				document["exitFullscreen"]();
+			else if (document["mozCancelFullScreen"])
+				document["mozCancelFullScreen"]();
+			else if (document["msExitFullscreen"])
+				document["msExitFullscreen"]();
+			else if (document["webkitCancelFullScreen"])
+				document["webkitCancelFullScreen"]();
+		}
+	};
+	Acts.prototype.Vibrate = function (pattern_)
+	{
+		try {
+			var arr = pattern_.split(",");
+			var i, len;
+			for (i = 0, len = arr.length; i < len; i++)
+			{
+				arr[i] = parseInt(arr[i], 10);
+			}
+			if (navigator["vibrate"])
+				navigator["vibrate"](arr);
+			else if (navigator["mozVibrate"])
+				navigator["mozVibrate"](arr);
+			else if (navigator["webkitVibrate"])
+				navigator["webkitVibrate"](arr);
+			else if (navigator["msVibrate"])
+				navigator["msVibrate"](arr);
+		}
+		catch (e) {}
+	};
+	Acts.prototype.InvokeDownload = function (url_, filename_)
+	{
+		var a = document.createElement("a");
+		if (typeof a["download"] === "undefined")
+		{
+			window.open(url_);
+		}
+		else
+		{
+			var body = document.getElementsByTagName("body")[0];
+			a.textContent = filename_;
+			a.href = url_;
+			a["download"] = filename_;
+			body.appendChild(a);
+			var clickEvent = new MouseEvent("click");
+			a.dispatchEvent(clickEvent);
+			body.removeChild(a);
+		}
+	};
+	Acts.prototype.InvokeDownloadString = function (str_, mimetype_, filename_)
+	{
+		var datauri = "data:" + mimetype_ + "," + encodeURIComponent(str_);
+		var a = document.createElement("a");
+		if (typeof a["download"] === "undefined")
+		{
+			window.open(datauri);
+		}
+		else
+		{
+			var body = document.getElementsByTagName("body")[0];
+			a.textContent = filename_;
+			a.href = datauri;
+			a["download"] = filename_;
+			body.appendChild(a);
+			var clickEvent = new MouseEvent("click");
+			a.dispatchEvent(clickEvent);
+			body.removeChild(a);
+		}
+	};
+	Acts.prototype.ConsoleLog = function (type_, msg_)
+	{
+		if (typeof console === "undefined")
+			return;
+		if (type_ === 0 && console.log)
+			console.log(msg_.toString());
+		if (type_ === 1 && console.warn)
+			console.warn(msg_.toString());
+		if (type_ === 2 && console.error)
+			console.error(msg_.toString());
+	};
+	Acts.prototype.ConsoleGroup = function (name_)
+	{
+		if (console && console.group)
+			console.group(name_);
+	};
+	Acts.prototype.ConsoleGroupEnd = function ()
+	{
+		if (console && console.groupEnd)
+			console.groupEnd();
+	};
+	Acts.prototype.ExecJs = function (js_)
+	{
+		try {
+			if (eval)
+				eval(js_);
+		}
+		catch (e)
+		{
+			if (console && console.error)
+				console.error("Error executing Javascript: ", e);
+		}
+	};
+	var orientations = [
+		"portrait",
+		"landscape",
+		"portrait-primary",
+		"portrait-secondary",
+		"landscape-primary",
+		"landscape-secondary"
+	];
+	Acts.prototype.LockOrientation = function (o)
+	{
+		o = Math.floor(o);
+		if (o < 0 || o >= orientations.length)
+			return;
+		this.runtime.autoLockOrientation = false;
+		var orientation = orientations[o];
+		if (screen["orientation"] && screen["orientation"]["lock"])
+			screen["orientation"]["lock"](orientation);
+		else if (screen["lockOrientation"])
+			screen["lockOrientation"](orientation);
+		else if (screen["webkitLockOrientation"])
+			screen["webkitLockOrientation"](orientation);
+		else if (screen["mozLockOrientation"])
+			screen["mozLockOrientation"](orientation);
+		else if (screen["msLockOrientation"])
+			screen["msLockOrientation"](orientation);
+	};
+	Acts.prototype.UnlockOrientation = function ()
+	{
+		this.runtime.autoLockOrientation = false;
+		if (screen["orientation"] && screen["orientation"]["unlock"])
+			screen["orientation"]["unlock"]();
+		else if (screen["unlockOrientation"])
+			screen["unlockOrientation"]();
+		else if (screen["webkitUnlockOrientation"])
+			screen["webkitUnlockOrientation"]();
+		else if (screen["mozUnlockOrientation"])
+			screen["mozUnlockOrientation"]();
+		else if (screen["msUnlockOrientation"])
+			screen["msUnlockOrientation"]();
+	};
+	pluginProto.acts = new Acts();
+	function Exps() {};
+	Exps.prototype.URL = function (ret)
+	{
+		ret.set_string(this.runtime.isDomFree ? "" : window.location.toString());
+	};
+	Exps.prototype.Protocol = function (ret)
+	{
+		ret.set_string(this.runtime.isDomFree ? "" : window.location.protocol);
+	};
+	Exps.prototype.Domain = function (ret)
+	{
+		ret.set_string(this.runtime.isDomFree ? "" : window.location.hostname);
+	};
+	Exps.prototype.PathName = function (ret)
+	{
+		ret.set_string(this.runtime.isDomFree ? "" : window.location.pathname);
+	};
+	Exps.prototype.Hash = function (ret)
+	{
+		ret.set_string(this.runtime.isDomFree ? "" : window.location.hash);
+	};
+	Exps.prototype.Referrer = function (ret)
+	{
+		ret.set_string(this.runtime.isDomFree ? "" : document.referrer);
+	};
+	Exps.prototype.Title = function (ret)
+	{
+		ret.set_string(this.runtime.isDomFree ? "" : document.title);
+	};
+	Exps.prototype.Name = function (ret)
+	{
+		ret.set_string(this.runtime.isDomFree ? "" : navigator.appName);
+	};
+	Exps.prototype.Version = function (ret)
+	{
+		ret.set_string(this.runtime.isDomFree ? "" : navigator.appVersion);
+	};
+	Exps.prototype.Language = function (ret)
+	{
+		if (navigator && navigator.language)
+			ret.set_string(navigator.language);
+		else
+			ret.set_string("");
+	};
+	Exps.prototype.Platform = function (ret)
+	{
+		ret.set_string(this.runtime.isDomFree ? "" : navigator.platform);
+	};
+	Exps.prototype.Product = function (ret)
+	{
+		if (navigator && navigator.product)
+			ret.set_string(navigator.product);
+		else
+			ret.set_string("");
+	};
+	Exps.prototype.Vendor = function (ret)
+	{
+		if (navigator && navigator.vendor)
+			ret.set_string(navigator.vendor);
+		else
+			ret.set_string("");
+	};
+	Exps.prototype.UserAgent = function (ret)
+	{
+		ret.set_string(this.runtime.isDomFree ? "" : navigator.userAgent);
+	};
+	Exps.prototype.QueryString = function (ret)
+	{
+		ret.set_string(this.runtime.isDomFree ? "" : window.location.search);
+	};
+	Exps.prototype.QueryParam = function (ret, paramname)
+	{
+		if (this.runtime.isDomFree)
+		{
+			ret.set_string("");
+			return;
+		}
+		var match = RegExp('[?&]' + paramname + '=([^&]*)').exec(window.location.search);
+		if (match)
+			ret.set_string(decodeURIComponent(match[1].replace(/\+/g, ' ')));
+		else
+			ret.set_string("");
+	};
+	Exps.prototype.Bandwidth = function (ret)
+	{
+		var connection = navigator["connection"] || navigator["mozConnection"] || navigator["webkitConnection"];
+		if (!connection)
+			ret.set_float(Number.POSITIVE_INFINITY);
+		else
+		{
+			if (typeof connection["bandwidth"] !== "undefined")
+				ret.set_float(connection["bandwidth"]);
+			else if (typeof connection["downlinkMax"] !== "undefined")
+				ret.set_float(connection["downlinkMax"]);
+			else
+				ret.set_float(Number.POSITIVE_INFINITY);
+		}
+	};
+	Exps.prototype.ConnectionType = function (ret)
+	{
+		var connection = navigator["connection"] || navigator["mozConnection"] || navigator["webkitConnection"];
+		if (!connection)
+			ret.set_string("unknown");
+		else
+		{
+			ret.set_string(connection["type"] || "unknown");
+		}
+	};
+	Exps.prototype.BatteryLevel = function (ret)
+	{
+		var battery = navigator["battery"] || navigator["mozBattery"] || navigator["webkitBattery"];
+		if (battery)
+		{
+			ret.set_float(battery["level"]);
+		}
+		else
+		{
+			maybeLoadBatteryManager();
+			if (batteryManager)
+			{
+				ret.set_float(batteryManager["level"]);
+			}
+			else
+			{
+				ret.set_float(1);		// not supported/unknown: assume charged
+			}
+		}
+	};
+	Exps.prototype.BatteryTimeLeft = function (ret)
+	{
+		var battery = navigator["battery"] || navigator["mozBattery"] || navigator["webkitBattery"];
+		if (battery)
+		{
+			ret.set_float(battery["dischargingTime"]);
+		}
+		else
+		{
+			maybeLoadBatteryManager();
+			if (batteryManager)
+			{
+				ret.set_float(batteryManager["dischargingTime"]);
+			}
+			else
+			{
+				ret.set_float(Number.POSITIVE_INFINITY);		// not supported/unknown: assume infinite time left
+			}
+		}
+	};
+	Exps.prototype.ExecJS = function (ret, js_)
+	{
+		if (!eval)
+		{
+			ret.set_any(0);
+			return;
+		}
+		var result = 0;
+		try {
+			result = eval(js_);
+		}
+		catch (e)
+		{
+			if (console && console.error)
+				console.error("Error executing Javascript: ", e);
+		}
+		if (typeof result === "number")
+			ret.set_any(result);
+		else if (typeof result === "string")
+			ret.set_any(result);
+		else if (typeof result === "boolean")
+			ret.set_any(result ? 1 : 0);
+		else
+			ret.set_any(0);
+	};
+	Exps.prototype.ScreenWidth = function (ret)
+	{
+		ret.set_int(screen.width);
+	};
+	Exps.prototype.ScreenHeight = function (ret)
+	{
+		ret.set_int(screen.height);
+	};
+	Exps.prototype.DevicePixelRatio = function (ret)
+	{
+		ret.set_float(this.runtime.devicePixelRatio);
+	};
+	Exps.prototype.WindowInnerWidth = function (ret)
+	{
+		ret.set_int(window.innerWidth);
+	};
+	Exps.prototype.WindowInnerHeight = function (ret)
+	{
+		ret.set_int(window.innerHeight);
+	};
+	Exps.prototype.WindowOuterWidth = function (ret)
+	{
+		ret.set_int(window.outerWidth);
+	};
+	Exps.prototype.WindowOuterHeight = function (ret)
+	{
+		ret.set_int(window.outerHeight);
+	};
+	pluginProto.exps = new Exps();
+}());
+;
+;
 cr.plugins_.Function = function(runtime)
 {
 	this.runtime = runtime;
@@ -19090,6 +19892,1175 @@ cr.plugins_.Particles = function(runtime)
 }());
 ;
 ;
+cr.plugins_.Rex_Comment = function(runtime)
+{
+	this.runtime = runtime;
+};
+(function ()
+{
+	var pluginProto = cr.plugins_.Rex_Comment.prototype;
+	pluginProto.Type = function(plugin)
+	{
+		this.plugin = plugin;
+		this.runtime = plugin.runtime;
+	};
+	var typeProto = pluginProto.Type.prototype;
+	typeProto.onCreate = function()
+	{
+	};
+	pluginProto.Instance = function(type)
+	{
+		this.type = type;
+		this.runtime = type.runtime;
+	};
+	var instanceProto = pluginProto.Instance.prototype;
+	instanceProto.onCreate = function()
+	{
+	};
+	instanceProto.onDestroy = function ()
+	{
+	};
+	function Cnds() {};
+	pluginProto.cnds = new Cnds();
+	Cnds.prototype.NOOP = function ()
+	{
+		return true;
+	};
+	function Acts() {};
+	pluginProto.acts = new Acts();
+    Acts.prototype.NOOP = function ()
+	{
+	};
+	function Exps() {};
+	pluginProto.exps = new Exps();
+}());
+;
+;
+cr.plugins_.Rex_Hash = function(runtime)
+{
+	this.runtime = runtime;
+};
+(function ()
+{
+	var pluginProto = cr.plugins_.Rex_Hash.prototype;
+	pluginProto.Type = function(plugin)
+	{
+		this.plugin = plugin;
+		this.runtime = plugin.runtime;
+	};
+	var typeProto = pluginProto.Type.prototype;
+	typeProto.onCreate = function()
+	{
+	};
+	pluginProto.Instance = function(type)
+	{
+		this.type = type;
+		this.runtime = type.runtime;
+	};
+	var instanceProto = pluginProto.Instance.prototype;
+	instanceProto.onCreate = function()
+	{
+        var init_data = this.properties[0];
+        if (init_data != "")
+            this.hashtable = JSON.parse(init_data);
+        else
+            this.hashtable = {};
+		this.currentEntry = this.hashtable;
+        this.setIndent(this.properties[1]);
+        this.exp_CurKey = "";
+        this.exp_CurValue = 0;
+        this.exp_Loopindex = 0;
+	};
+	instanceProto.cleanAll = function()
+	{
+	    var key;
+		for (key in this.hashtable)
+		    delete this.hashtable[key];
+        this.currentEntry = this.hashtable;
+	};
+	instanceProto.getEntry = function(keys, root, defaultEntry)
+	{
+        var entry = root || this.hashtable;
+        if ((keys === "") || (keys.length === 0))
+        {
+        }
+        else
+        {
+            if (typeof (keys) === "string")
+                keys = keys.split(".");
+            var i,  cnt=keys.length, key;
+            for (i=0; i< cnt; i++)
+            {
+                key = keys[i];
+                if ( (entry[key] == null) || (typeof(entry[key]) !== "object") )
+                {
+                    var newEntry;
+                    if (i === cnt-1)
+                    {
+                        newEntry = defaultEntry || {};
+                    }
+                    else
+                    {
+                        newEntry = {};
+                    }
+                    entry[key] = newEntry;
+                }
+                entry = entry[key];
+            }
+        }
+        return entry;
+	};
+	instanceProto.setCurrentEntry = function(keys, root)
+	{
+        this.currentEntry = this.getEntry(keys, root);
+    };
+	instanceProto.setValue = function(keys, value, root)
+	{
+        if ((keys === "") || (keys.length === 0))
+        {
+            if ((value !== null) && typeof(value) === "object")
+            {
+                if (root == null)
+                    this.hashtable = value;
+                else
+                    root = value;
+            }
+        }
+        else
+        {
+            if (root == null)
+                root = this.hashtable;
+            if (typeof (keys) === "string")
+                keys = keys.split(".");
+            var lastKey = keys.pop();
+            var entry = this.getEntry(keys, root);
+            entry[lastKey] = value;
+        }
+	};
+	instanceProto.getValue = function(keys, root)
+	{
+        if (root == null)
+            root = this.hashtable;
+        if ((keys == null) || (keys === "") || (keys.length === 0))
+        {
+            return root;
+        }
+        else
+        {
+            if (typeof (keys) === "string")
+                keys = keys.split(".");
+            var i,  cnt=keys.length, key;
+            var entry = root;
+            for (i=0; i< cnt; i++)
+            {
+                key = keys[i];
+                if (entry.hasOwnProperty(key))
+                    entry = entry[ key ];
+                else
+                    return;
+            }
+            return entry;
+        }
+	};
+    instanceProto.removeKey = function (keys)
+	{
+        if ((keys === "") || (keys.length === 0))
+        {
+            this.cleanAll();
+        }
+        else
+        {
+            if (typeof (keys) === "string")
+                keys = keys.split(".");
+            var data = this.getValue(keys);
+            if (data === undefined)
+                return;
+            var lastKey = keys.pop();
+            var entry = this.getEntry(keys);
+            if (!isArray(entry))
+            {
+                delete entry[lastKey];
+            }
+            else
+            {
+                if ((lastKey < 0) || (lastKey >= entry.length))
+                    return;
+                else if (lastKey === (entry.length-1))
+                    entry.pop();
+                else if (lastKey === 0)
+                    entry.shift();
+                else
+                    entry.splice(lastKey, 1);
+            }
+        }
+	};
+	instanceProto.setIndent = function (space)
+	{
+        if (isNaN(space))
+            this.space = space;
+        else
+            this.sapce = parseInt(space);
+	};
+	var getItemsCount = function (o)
+	{
+	    if (o == null)  // nothing
+	        return (-1);
+	    else if ((typeof o == "number") || (typeof o == "string"))  // number/string
+	        return 0;
+		else if (o.length != null)  // list
+		    return o.length;
+	    var key,cnt=0;
+	    for (key in o)
+	        cnt += 1;
+	    return cnt;
+	};
+    var din = function (d, default_value, space)
+    {
+        var o;
+	    if (d === true)
+	        o = 1;
+	    else if (d === false)
+	        o = 0;
+        else if (d == null)
+        {
+            if (default_value != null)
+                o = default_value;
+            else
+                o = 0;
+        }
+        else if (typeof(d) == "object")
+        {
+            o = JSON.stringify(d,null,space);
+        }
+        else
+            o = d;
+	    return o;
+    };
+    var isArray = function(o)
+    {
+        return (o instanceof Array);
+    }
+	instanceProto.saveToJSON = function ()
+	{
+		return { "d": this.hashtable };
+	};
+	instanceProto.loadFromJSON = function (o)
+	{
+		this.hashtable = o["d"];
+	};
+	function Cnds() {};
+	pluginProto.cnds = new Cnds();
+	Cnds.prototype.ForEachItem = function (key)
+	{
+        var entry = this.getEntry(key);
+        var current_frame = this.runtime.getCurrentEventStack();
+        var current_event = current_frame.current_event;
+		var solModifierAfterCnds = current_frame.isModifierAfterCnds();
+        var key, value;
+        this.exp_Loopindex = -1;
+		for (key in entry)
+	    {
+            if (solModifierAfterCnds)
+		        this.runtime.pushCopySol(current_event.solModifiers);
+            this.exp_CurKey = key;
+            this.exp_CurValue = entry[key];
+            this.exp_Loopindex ++;
+			current_event.retrigger();
+            if (solModifierAfterCnds)
+			    this.runtime.popSol(current_event.solModifiers);
+		}
+        this.exp_CurKey = "";
+        this.exp_CurValue = 0;
+		return false;
+	};
+	Cnds.prototype.KeyExists = function (keys)
+	{
+	    if (keys == "")
+            return false;
+        var data = this.getValue(keys);
+        return (data !== undefined);
+	};
+	Cnds.prototype.IsEmpty = function (keys)
+	{
+        var entry = this.getEntry(keys);
+        var cnt = getItemsCount(entry);
+        return (cnt <= 0);
+	};
+	function Acts() {};
+	pluginProto.acts = new Acts();
+	Acts.prototype.SetValueByKeyString = function (key, val)
+	{
+        if (key === "")
+            return;
+        this.setValue(key, val);
+	};
+	Acts.prototype.SetCurHashEntey = function (key)
+	{
+        this.setCurrentEntry(key);
+    };
+	Acts.prototype.SetValueInCurHashEntey = function (key, val)
+	{
+        if (key === "")
+            return;
+        this.setValue(key, val, this.currentEntry);
+	};
+	Acts.prototype.CleanAll = function ()
+	{
+        this.cleanAll();
+	};
+    Acts.prototype.StringToHashTable = function (JSON_string)
+	{
+	    if (JSON_string != "")
+	        this.hashtable = JSON.parse(JSON_string);
+	    else
+	        this.cleanAll();
+	};
+    Acts.prototype.RemoveByKeyString = function (key)
+	{
+        this.removeKey(key);
+	};
+    Acts.prototype.PickKeysToArray = function (key, arrayObjs)
+	{
+	    if (!arrayObjs)
+	        return;
+        var arrayObj = arrayObjs.getFirstPicked();
+;
+        cr.plugins_.Arr.prototype.acts.SetSize.apply(arrayObj, [0,1,1]);
+        var entry = this.getEntry(key);
+		for (var key in entry)
+            cr.plugins_.Arr.prototype.acts.Push.call(arrayObj, 0, key, 0);
+	};
+	var getFullKey = function (currentKey, key)
+	{
+        if (currentKey !== "")
+            key = currentKey + "." + key;
+	    return key;
+	};
+    Acts.prototype.MergeTwoHashTable = function (hashtable_objs, conflict_handler_mode)
+	{
+	    if (!hashtable_objs)
+	        return;
+        var hashB = hashtable_objs.getFirstPicked();
+        if (hashB == null)
+            return;
+;
+		var untraversalTables = [], node;
+		var curHash, currentKey, keyB, valueB, keyA, valueA, fullKey;
+		if (conflict_handler_mode === 2)
+		{
+		    this.cleanAll();
+		    conflict_handler_mode = 0;
+		}
+        switch (conflict_handler_mode)
+        {
+        case 0: // Overwrite from hash B
+            untraversalTables.push({table:hashB.hashtable, key:""});
+			while (untraversalTables.length !== 0)
+			{
+			    node = untraversalTables.shift();
+			    curHash = node.table;
+			    currentKey = node.key;
+			    for (keyB in curHash)
+				{
+				    valueB = curHash[keyB];
+                    fullKey = getFullKey(currentKey, keyB);
+                    valueA = this.getValue(fullKey);
+				    if ((valueB === null) || typeof(valueB) !== "object")
+					{
+                        this.setValue(fullKey, valueB);
+					}
+					else
+					{
+                        if (isArray(valueB) && !isArray(valueA))
+                            this.setValue(fullKey, []);
+					    untraversalTables.push({table:valueB, key:fullKey});
+					}
+				}
+			}
+            break;
+        case 1:  // Merge new keys from hash table B
+            untraversalTables.push({table:hashB.hashtable, key:""});
+			while (untraversalTables.length !== 0)
+			{
+			    node = untraversalTables.shift();
+			    curHash = node.table;
+			    currentKey = node.key;
+			    for (keyB in curHash)
+				{
+				    valueB = curHash[keyB];
+                    fullKey = getFullKey(currentKey, keyB);
+                    valueA = this.getValue(fullKey);
+                    if (valueA !== undefined)
+                        continue;
+				    if ((valueB == null) || typeof(valueB) !== "object")
+					{
+					    this.setValue(fullKey, valueB);
+					}
+                    else
+					{
+                        if ( isArray(valueB) )
+                            this.setValue(fullKey, []);
+					    untraversalTables.push({table:valueB,  key:fullKey});
+					}
+				}
+			}
+            break;
+        }
+	};
+	Acts.prototype.SetJSONByKeyString = function (key, val)
+	{
+        val = JSON.parse(val);
+        this.setValue(key, val);
+	};
+	Acts.prototype.AddToValueByKeyString = function (keys, val)
+	{
+        if (keys === "")
+            return;
+        keys = keys.split(".");
+        var curValue = this.getValue(keys) || 0;
+        this.setValue(keys, curValue + val);
+	};
+	var _shuffle = function (arr, random_gen)
+	{
+        var i = arr.length, j, temp, random_value;
+        if ( i == 0 ) return;
+        while ( --i )
+        {
+		    random_value = (random_gen == null)?
+			               Math.random(): random_gen.random();
+            j = Math.floor( random_value * (i+1) );
+            temp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = temp;
+        }
+    };
+    Acts.prototype.Shuffle = function (entryKey)
+	{
+        var arr = this.getValue(entryKey);
+        if (!isArray(arr))
+            return;
+        _shuffle(arr);
+	};
+    Acts.prototype.Sort = function (entryKey, sortKey, sortMode_)
+	{
+        var arr = this.getValue(entryKey);
+        if (!isArray(arr))
+            return;
+        if (sortKey === "")
+            sortKey = null;
+        else
+            sortKey = sortKey.split(".");
+        var self = this;
+        var sortFn = function (itemA, itemB)
+        {
+            var valA = (sortKey)? self.getValue(sortKey, itemA): itemA;
+            var valB = (sortKey)? self.getValue(sortKey, itemB): itemB;
+            var m = sortMode_;
+            if (sortMode_ >= 2)  // logical descending, logical ascending
+            {
+                valA = parseFloat(valA);
+                valB = parseFloat(valB);
+                m -= 2;
+            }
+            switch (m)
+            {
+            case 0:  // descending
+                if (valA === valB) return 0;
+                else if (valA < valB) return 1;
+                else return -1;
+                break;
+            case 1:  // ascending
+                if (valA === valB) return 0;
+                else if (valA > valB) return 1;
+                else return -1;
+                break;
+            }
+        }
+        arr.sort(sortFn);
+	};
+	Acts.prototype.PushJSON = function (keys, val)
+	{
+        val = JSON.parse(val);
+        Acts.prototype.PushValue.call(this, keys, val);
+	};
+	Acts.prototype.PushValue = function (keys, val)
+	{
+        var arr = this.getEntry(keys, null, []);
+        if (!isArray(arr))
+            return;
+        arr.push(val);
+	};
+	Acts.prototype.InsertJSON = function (keys, val, idx)
+	{
+        val = JSON.parse(val);
+        Acts.prototype.InsertValue.call(this, keys, val, idx);
+	};
+	Acts.prototype.InsertValue = function (keys, val, idx)
+	{
+        var arr = this.getEntry(keys, null, []);
+        if (!isArray(arr))
+            return;
+        arr.splice(idx, 0, val);
+	};
+	Acts.prototype.SetIndent = function (space)
+	{
+        this.setIndent(space);
+	};
+	function Exps() {};
+	pluginProto.exps = new Exps();
+	Exps.prototype.Hash = function (ret, keys, default_value)
+	{
+        keys = keys.split(".");
+        var val = din(this.getValue(keys), default_value,this.space);
+		ret.set_any(val);
+	};
+    Exps.prototype.At = Exps.prototype.Hash;
+    var gKeys = [];
+	Exps.prototype.AtKeys = function (ret, key)
+	{
+        gKeys.length = 0;
+        var i, cnt=arguments.length, k;
+        for (i=1; i<cnt; i++)
+        {
+            k = arguments[i];
+            if ((typeof (k) === "string") && (k.indexOf(".") !== -1))
+                gKeys.push.apply(gKeys, k.split("."));
+            else
+                gKeys.push(k);
+        }
+        var val = din(this.getValue(gKeys), null, this.space);
+        gKeys.length = 0;
+		ret.set_any(val);
+	};
+	Exps.prototype.Entry = function (ret, key)
+	{
+        var val = din(this.currentEntry[key], null, this.space);
+		ret.set_any(val);
+	};
+	Exps.prototype.HashTableToString = function (ret)
+	{
+        var json_string = JSON.stringify(this.hashtable,null,this.space);
+		ret.set_string(json_string);
+	};
+	Exps.prototype.CurKey = function (ret)
+	{
+		ret.set_string(this.exp_CurKey);
+	};
+	Exps.prototype.CurValue = function (ret, subKeys, default_value)
+	{
+        var val = this.getValue(subKeys, this.exp_CurValue);
+        val = din(val, default_value, this.space);
+		ret.set_any(val);
+	};
+	Exps.prototype.ItemCnt = function (ret, keys)
+	{
+        var cnt = getItemsCount(this.getValue(keys));
+		ret.set_int(cnt);
+	};
+	Exps.prototype.Keys2ItemCnt = function (ret, key)
+	{
+        var keys = (arguments.length > 2)?
+                         Array.prototype.slice.call(arguments,1):
+                         [key];
+        var cnt = getItemsCount(this.getValue(keys));
+		ret.set_int(cnt);
+	};
+	Exps.prototype.ToString = function (ret)
+	{
+	    var table;
+	    if (arguments.length == 1)  // no parameter
+		    table = this.hashtable;
+		else
+		{
+		    var i, cnt=arguments.length;
+			table = {};
+			for(i=1; i<cnt; i=i+2)
+			    table[arguments[i]]=arguments[i+1];
+	    }
+		ret.set_string(JSON.stringify(table,null,this.space));
+	};
+	Exps.prototype.AsJSON = Exps.prototype.HashTableToString;
+	Exps.prototype.RandomKeyAt = function (ret, keys, default_value)
+	{
+        var val;
+        var o = this.getValue(keys);
+        if (typeof(o) === "object")
+        {
+            var isArr = isArray(o);
+            if (!isArr)
+                o = Object.keys(o);
+            var cnt = o.length;
+            if (cnt > 0)
+            {
+                val = Math.floor(Math.random()*cnt);
+                if (!isArr)
+                    val = o[val];
+            }
+        }
+        val = din(val, default_value, this.space);
+		ret.set_any(val);
+	};
+	Exps.prototype.Loopindex = function (ret)
+	{
+		ret.set_int(this.exp_Loopindex);
+	};
+	Exps.prototype.Pop = function (ret, keys, idx)
+	{
+        var arr = this.getEntry(keys);
+        var val;
+        if (arr == null)
+            val = 0;
+        else if ((idx == null) || (idx === (arr.length-1)))
+            val = arr.pop()
+        else
+            val = arr.splice(idx, 1);
+		ret.set_any( din(val, null, this.space) );
+	};
+}());
+;
+;
+cr.plugins_.Rex_MomenJS = function(runtime)
+{
+	this.runtime = runtime;
+};
+(function ()
+{
+	var pluginProto = cr.plugins_.Rex_MomenJS.prototype;
+	pluginProto.Type = function(plugin)
+	{
+		this.plugin = plugin;
+		this.runtime = plugin.runtime;
+	};
+	var typeProto = pluginProto.Type.prototype;
+	typeProto.onCreate = function()
+	{
+	};
+	pluginProto.Instance = function(type)
+	{
+		this.type = type;
+		this.runtime = type.runtime;
+	};
+	var instanceProto = pluginProto.Instance.prototype;
+	instanceProto.onCreate = function()
+	{
+        this.moment = null;
+	};
+	instanceProto.getMoment = function(clone)
+	{
+        var m;
+        if (this.moment === null)
+            m = this.moment = window["moment"]();
+        else if (clone)
+            m = this.moment["clone"]();
+        else
+            m = this.moment;
+        return m;
+	};
+    instanceProto.saveToJSON = function ()
+	{
+		return { "m": (this.moment === null)? null: this.moment["toString"](),
+                };
+	};
+	instanceProto.loadFromJSON = function (o)
+	{
+        this.moment = null;
+        if ( o["m"] !== null)
+            this.moment = window["moment"]( o["m"] );
+	};
+    var momentOutput = function(m, f)
+    {
+        var val;
+        if (f == null)
+            val = m["valueOf"]();
+        else if (f.toLowerCase() === "iso")
+            val = m["toISOString"]();
+        else
+            val = m["format"](f);
+        return val;
+    }
+	function Cnds() {};
+	pluginProto.cnds = new Cnds();
+	Cnds.prototype.DateStringIsValid = function (d, f, rm)
+	{
+	    return window["moment"](d, f, (rm===1) )["isValid"]();
+	};
+	Cnds.prototype.IsLeapYear = function ()
+	{
+	    return this.getMoment()["isLeapYear"]();
+	};
+	function Acts() {};
+	pluginProto.acts = new Acts();
+	Acts.prototype.SetToCurrentDate = function ()
+	{
+	    this.moment = window["moment"]();
+	};
+	Acts.prototype.SetFromUnixTimestamp = function (d)
+	{
+	    this.moment = window["moment"](d);
+	};
+	Acts.prototype.SetFromString = function (d, f)
+	{
+	    this.moment = (f === "")? window["moment"](d) : window["moment"](d, f);
+	};
+	Acts.prototype.Clone = function (momentType)
+	{
+        var inst = momentType.getFirstPicked();
+        var m = (inst != null)? inst.moment : null;
+        if (!window["moment"]["isMoment"](m))
+            return;
+	    this.moment = window["moment"](inst.moment);
+	};
+    var TYPE2STRING = ["years", "quarters", "months", "weeks", "days", "hours", "minutes", "seconds", "milliseconds"];
+	Acts.prototype.SetComponent = function (amount, type_)
+	{
+	    this.getMoment()["set"](TYPE2STRING[type_], amount);
+	};
+	Acts.prototype.Add = function (amount, type_)
+	{
+		if (typeof(type_) === "number")
+		    type_ = TYPE2STRING[type_];
+	    this.getMoment()["add"](amount, type_);
+	};
+	Acts.prototype.SetLocale = function (locale)
+	{
+        this.getMoment()["locale"](locale);
+	};
+	function Exps() {};
+	pluginProto.exps = new Exps();
+	Exps.prototype.Year = function (ret)
+	{
+        var y = this.getMoment()["year"]();
+		ret.set_int(y);
+	};
+	Exps.prototype.Month = function (ret)
+	{
+        var m = this.getMoment()["month"]();
+		ret.set_int(m);
+	};
+	Exps.prototype.Date = function (ret)
+	{
+        var d = this.getMoment()["date"]();
+		ret.set_int(d);
+	};
+	Exps.prototype.Day = function (ret)
+	{
+        var d = this.getMoment()["day"]();
+		ret.set_int(d);
+	};
+	Exps.prototype.Hours = function (ret)
+	{
+        var h = this.getMoment()["hour"]();
+		ret.set_int(h);
+	};
+	Exps.prototype.Minutes = function (ret)
+	{
+        var h = this.getMoment()["minute"]();
+		ret.set_int(h);
+	};
+	Exps.prototype.Seconds = function (ret)
+	{
+        var s = this.getMoment()["second"]();
+		ret.set_int(s);
+	};
+	Exps.prototype.Milliseconds = function (ret)
+	{
+        var ms = this.getMoment()["millisecond"]();
+		ret.set_int(ms);
+	};
+    Exps.prototype.UnixTimestamp = function (ret)
+	{
+        var ts = this.getMoment()["valueOf"]();
+		ret.set_int(ts);
+	};
+    Exps.prototype.Format = function (ret, f)
+	{
+        if (f == null)
+            f = "";
+        var m = this.getMoment();
+        ret.set_string(momentOutput(m, f));
+	};
+    Exps.prototype.ISO = function (ret)
+	{
+        var m = this.getMoment();
+        ret.set_string(momentOutput(m, "iso"));
+	};
+    Exps.prototype.DaysInMonth = function (ret)
+	{
+        var d = this.getMoment()["daysInMonth"]();
+		ret.set_int(d);
+	};
+    Exps.prototype.ElapsedYears = function (ret, prev, isFloat)
+	{
+        prev = window["moment"](prev);
+        isFloat = (isFloat === 1);
+        var d = -prev.diff(this.getMoment(), "years", isFloat);
+		ret.set_float(d);
+	};
+    Exps.prototype.ElapsedMonths = function (ret, prev, isFloat)
+	{
+        prev = window["moment"](prev);
+        isFloat = (isFloat === 1);
+        var d = -prev.diff(this.getMoment(), "months", isFloat);
+		ret.set_float(d);
+	};
+    Exps.prototype.ElapsedDays = function (ret, prev, isFloat)
+	{
+        prev = window["moment"](prev);
+        isFloat = (isFloat === 1);
+        var d = -prev.diff(this.getMoment(), "days", isFloat);
+		ret.set_float(d);
+	};
+    Exps.prototype.ElapsedHours = function (ret, prev, isFloat)
+	{
+        prev = window["moment"](prev);
+        isFloat = (isFloat === 1);
+        var d = -prev.diff(this.getMoment(), "hours", isFloat);
+		ret.set_float(d);
+	};
+    Exps.prototype.ElapsedMinutes = function (ret, prev, isFloat)
+	{
+        prev = window["moment"](prev);
+        isFloat = (isFloat === 1);
+        var d = -prev.diff(this.getMoment(), "minutes", isFloat);
+		ret.set_float(d);
+	};
+    Exps.prototype.ElapsedSeconds = function (ret, prev, isFloat)
+	{
+        prev = window["moment"](prev);
+        isFloat = (isFloat === 1);
+        var d = -prev.diff(this.getMoment(), "seconds", isFloat);
+		ret.set_float(d);
+	};
+    Exps.prototype.ElapsedMilliseconds = function (ret, prev)
+	{
+        prev = window["moment"](prev);
+        var d = -prev.diff(this.getMoment(), "milliseconds");
+		ret.set_float(d);
+	};
+    Exps.prototype.StartOfYear = function (ret, f)
+	{
+        var m = this.getMoment(true)["startOf"]("year");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.StartOfMonth = function (ret, f)
+	{
+        var m = this.getMoment(true)["startOf"]("month");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.StartOfQuarter = function (ret, f)
+	{
+        var m = this.getMoment(true)["startOf"]("quarter");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.StartOfWeek = function (ret, f)
+	{
+        var m = this.getMoment(true)["startOf"]("week");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.StartOfDate = function (ret, f)
+	{
+        var m = this.getMoment(true)["startOf"]("date");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.StartOfHour = function (ret, f)
+	{
+        var m = this.getMoment(true)["startOf"]("hour");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.StartOfMinute = function (ret, f)
+	{
+        var m = this.getMoment(true)["startOf"]("minute");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.StartOfSecond = function (ret, f)
+	{
+        var m = this.getMoment(true)["startOf"]("second");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.StartOfISOWeek = function (ret, f)
+	{
+        var m = this.getMoment(true)["startOf"]("isoWeek");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.EndOfYear = function (ret, f)
+	{
+        var m = this.getMoment(true)["endOf"]("year");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.EndOfMonth = function (ret, f)
+	{
+        var m = this.getMoment(true)["endOf"]("month");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.EndOfQuarter = function (ret, f)
+	{
+        var m = this.getMoment(true)["endOf"]("quarter");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.EndOfWeek = function (ret, f)
+	{
+        var m = this.getMoment(true)["endOf"]("week");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.EndOfDate = function (ret, f)
+	{
+        var m = this.getMoment(true)["endOf"]("date");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.EndOfHour = function (ret, f)
+	{
+        var m = this.getMoment(true)["endOf"]("hour");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.EndOfMinute = function (ret, f)
+	{
+        var m = this.getMoment(true)["endOf"]("minute");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.EndOfSecond = function (ret, f)
+	{
+        var m = this.getMoment(true)["endOf"]("second");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.EndOfISOWeek = function (ret, f)
+	{
+        var m = this.getMoment(true)["endOf"]("isoWeek");
+		ret.set_any(momentOutput(m, f));
+	};
+    Exps.prototype.Locale = function (ret)
+	{
+        var l = this.getMoment()["locale"]()
+		ret.set_string(l);
+	};
+}());
+;
+;
+cr.plugins_.Rex_WaitEvent = function(runtime)
+{
+	this.runtime = runtime;
+};
+(function ()
+{
+	var pluginProto = cr.plugins_.Rex_WaitEvent.prototype;
+	pluginProto.Type = function(plugin)
+	{
+		this.plugin = plugin;
+		this.runtime = plugin.runtime;
+	};
+	var typeProto = pluginProto.Type.prototype;
+	typeProto.onCreate = function()
+	{
+	};
+	pluginProto.Instance = function(type)
+	{
+		this.type = type;
+		this.runtime = type.runtime;
+	};
+	var instanceProto = pluginProto.Instance.prototype;
+	instanceProto.onCreate = function()
+	{
+	    this.events = {};
+		this.exp_EventName = "";
+        this.exp_Tag = null;
+	};
+	var isEmpty = function(o)
+	{
+		for (var k in o)
+		    return false;
+		return true;
+	};
+    instanceProto.saveToJSON = function ()
+	{
+		return { "evts": this.events,
+                 "ename": this.exp_EventName,
+                 "tag": this.exp_Tag,
+                };
+	};
+	instanceProto.loadFromJSON = function (o)
+	{
+		this.events = o["evts"];
+        this.exp_EventName = o["ename"];
+        this.exp_Tag = o["tag"];
+	};
+	instanceProto.eventExist = function (event_name, tag)
+	{
+        return (this.events[tag] != null) && (this.events[tag][event_name] != null);
+	};
+	instanceProto.runTrigEvent = function (method, tag, event_name)
+	{
+        this.exp_EventName = event_name;
+        this.exp_Tag = tag;
+        this.runtime.trigger(method, this);
+        this.exp_Tag = null;
+	};
+	function Cnds() {};
+	pluginProto.cnds = new Cnds();
+	Cnds.prototype.OnAllEventsFinished = function(tag)
+	{
+		return (this.exp_Tag === tag);
+	};
+	Cnds.prototype.OnAnyEventFinished = function(tag)
+	{
+		return (this.exp_Tag === tag);
+	};
+	Cnds.prototype.NoWaitEvent = function(tag)
+	{
+		var e=this.events[tag];
+		if (e == null)
+		    return true;
+		var k;
+		for (k in e)
+		{
+		    return false;
+		}
+		return true;
+	};
+	Cnds.prototype.OnAnyEventStart = function()
+	{
+		return true;
+	};
+	Cnds.prototype.IsWaiting = function(event_name, tag)
+	{
+		return (this.events[tag] && this.events[tag][event_name]);
+	};
+	function Acts() {};
+	pluginProto.acts = new Acts();
+	Acts.prototype.WaitEvent = function(event_name, tag)
+	{
+	    if (!this.events.hasOwnProperty(tag))
+		    this.events[tag] = {};
+        if (this.events[tag].hasOwnProperty(event_name))
+            return;
+	    this.events[tag][event_name] = true;
+        var cnds = cr.plugins_.Rex_WaitEvent.prototype.cnds;
+        this.runTrigEvent(cnds.OnAnyEventStart, tag, event_name);
+	};
+	Acts.prototype.EventFinished = function(event_name, tag)
+	{
+	    if (!this.eventExist(event_name, tag))
+		    return;
+        var cnds = cr.plugins_.Rex_WaitEvent.prototype.cnds;
+		this.exp_EventName = event_name;
+	    delete this.events[tag][event_name];
+        this.runTrigEvent(cnds.OnAnyEventFinished, tag, event_name);
+		if (isEmpty(this.events[tag]))
+		{
+			delete this.events[tag];
+            this.runTrigEvent(cnds.OnAllEventsFinished, tag, event_name);
+        }
+	};
+	Acts.prototype.CancelEvents = function(tag)
+	{
+	    if (!this.events.hasOwnProperty(tag))
+		    return;
+		delete this.events[tag];
+	};
+	function Exps() {};
+	pluginProto.exps = new Exps();
+	Exps.prototype.CurEventName = function(ret)
+	{
+		ret.set_string(this.exp_EventName);
+	};
+	Exps.prototype.CurTag = function(ret)
+	{
+		ret.set_string(this.exp_Tag || "");
+	};
+}());
+;
+;
+cr.plugins_.Rex_WebstorageExt = function(runtime)
+{
+	this.runtime = runtime;
+};
+(function ()
+{
+	var pluginProto = cr.plugins_.Rex_WebstorageExt.prototype;
+	pluginProto.Type = function(plugin)
+	{
+		this.plugin = plugin;
+		this.runtime = plugin.runtime;
+	};
+	var typeProto = pluginProto.Type.prototype;
+	typeProto.onCreate = function()
+	{
+	};
+	pluginProto.Instance = function(type)
+	{
+		this.type = type;
+		this.runtime = type.runtime;
+	};
+	var instanceProto = pluginProto.Instance.prototype;
+	instanceProto.onCreate = function()
+	{
+        this._webstorage_obj = null;
+	    this.fake_ret = {value:0,
+	                     set_any: function(value){this.value=value;},
+	                     set_int: function(value){this.value=value;},
+                         set_float: function(value){this.value=value;},
+                         set_string: function(value){this.value=value;},
+	                    };
+	};
+	instanceProto.onDestroy = function ()
+	{
+	};
+	instanceProto.webstorage_get = function ()
+	{
+        if (this._webstorage_obj != null)
+            return this._webstorage_obj;
+;
+        var plugins = this.runtime.types;
+        this._key_exist_fn = cr.plugins_.WebStorage.prototype.cnds.LocalStorageExists;
+        var name, plugin;
+        for (name in plugins)
+        {
+            plugin = plugins[name];
+            if (plugin.plugin.acts.StoreLocal == this._save_fn)
+            {
+                this._webstorage_obj = plugin.instances[0];
+                break;
+            }
+        }
+        return this._webstorage_obj;
+	};
+    instanceProto.load_value = function (key)
+    {
+        var webstorage_obj = this.webstorage_get();
+        cr.plugins_.WebStorage.prototype.exps.LocalValue.call(webstorage_obj, this.fake_ret, key);
+        return this.fake_ret.value;
+    };
+    instanceProto.save_value = function (key, value)
+    {
+        var webstorage_obj = this.webstorage_get();
+        cr.plugins_.WebStorage.prototype.acts.StoreLocal.call(webstorage_obj, key, value);
+    };
+    instanceProto.key_exist = function (key)
+    {
+        var webstorage_obj = this.webstorage_get();
+        return cr.plugins_.WebStorage.prototype.cnds.LocalStorageExists.call(webstorage_obj, key);
+    };
+	function Cnds() {};
+	pluginProto.cnds = new Cnds();
+	function Acts() {};
+	pluginProto.acts = new Acts();
+	function Exps() {};
+	pluginProto.exps = new Exps();
+    Exps.prototype.LocalValue = function (ret, _key, _default)
+	{
+	    var v;
+	    if (this.key_exist(_key))
+	    {
+	        v = this.load_value(_key);
+	    }
+	    else
+	    {
+	        v = _default;
+	        this.save_value(_key, v);
+	    }
+	    ret.set_any( v );
+	};
+}());
+;
+;
 cr.plugins_.Rex_jsshell = function (runtime) {
     this.runtime = runtime;
 };
@@ -19479,6 +21450,687 @@ cr.plugins_.Rex_jsshell = function (runtime) {
     StackKlassProto.pop = function () {
 ;
         this.ptr--;
+    };
+}());
+;
+;
+cr.plugins_.Rex_taffydb = function (runtime) {
+    this.runtime = runtime;
+};
+cr.plugins_.Rex_taffydb.databases = {}; // {db: database, ownerUID: uid }
+(function () {
+    var pluginProto = cr.plugins_.Rex_taffydb.prototype;
+    pluginProto.Type = function (plugin) {
+        this.plugin = plugin;
+        this.runtime = plugin.runtime;
+    };
+    var typeProto = pluginProto.Type.prototype;
+    typeProto.onCreate = function () {};
+    pluginProto.Instance = function (type) {
+        this.type = type;
+        this.runtime = type.runtime;
+    };
+    var instanceProto = pluginProto.Instance.prototype;
+    instanceProto.onCreate = function () {
+        this.db_name = null;
+        this.LinkToDatabase(this.properties[0]);
+        var index_keys_input = this.properties[1];
+        if (index_keys_input === "") {
+            if (!this.recycled)
+                this.indexKeys = [];
+            else
+                this.indexKeys.length = 0;
+        } else {
+            this.indexKeys = index_keys_input.split(",");
+        }
+        this.keyType = {}; // 0=string, 1=number, 2=eval
+        this.rowID = "";
+        this.preparedItem = {};
+        if (!this.recycled)
+            this.preprocessCmd = {};
+        this.preprocessCmd["inc"] = {};
+        this.preprocessCmd["max"] = {};
+        this.preprocessCmd["min"] = {};
+        this.hasPreprocessCmd = false;
+        this.CleanFilters();
+        this.query_base = null;
+        this.query_flag = false;
+        this.current_rows = null;
+        this.filter_history = {
+            "flt": {},
+            "ord": ""
+        };
+        this.queriedRows = null;
+        this.exp_CurRowID = "";
+        this.exp_CurRowIndex = -1;
+        this.exp_LastSavedRowID = "";
+        this.__flthis_save = null;
+    };
+    instanceProto.LinkToDatabase = function (name) {
+        if (this.db_name === name)
+            return;
+        else if (this.db_name === "") {
+            this.db()["remove"]();
+        }
+        this.db_name = name;
+        if (name === "") // private database
+        {
+            this.db = window["TAFFY"]();
+        } else // public database
+        {
+            create_global_database(this.uid, name);
+            this.db = get_global_database_reference(name).db;
+        }
+    };
+    var create_global_database = function (ownerUID, db_name, db_content) {
+        if (cr.plugins_.Rex_taffydb.databases.hasOwnProperty(db_name))
+            return;
+        var db_ref = {
+            db: window["TAFFY"](db_content),
+            ownerID: ownerUID
+        };
+        cr.plugins_.Rex_taffydb.databases[db_name] = db_ref;
+    };
+    var get_global_database_reference = function (db_name) {
+        return cr.plugins_.Rex_taffydb.databases[db_name];
+    };
+    instanceProto.onDestroy = function () {
+        this.indexKeys.length = 0;
+        clean_table(this.preparedItem);
+        clean_table(this.filters);
+        this.order_cond.length = 0;
+        if (this.db_name === "")
+            this.db()["remove"]();
+        else {
+            var database_ref = get_global_database_reference(this.db_name);
+            if (database_ref.ownerUID === this.uid)
+                database_ref.ownerUID = null;
+        }
+        this.preprocessCmd["inc"] = {};
+        this.preprocessCmd["max"] = {};
+        this.preprocessCmd["min"] = {};
+    };
+    instanceProto.SaveRow = function (row, indexKeys, rowID, preprocessCmd) {
+        var invalid_rowID = (rowID == null) || (rowID === "");
+        if (!invalid_rowID) {
+            var items = this.db(rowID);
+            var itemOld = items["first"]();
+            if (itemOld) {
+                row = this.buildUpdateItem(itemOld, row, preprocessCmd);
+                items["update"](row);
+            }
+        }
+        else if ((indexKeys == null) || (indexKeys.length === 0)) {
+            row = this.buildUpdateItem(null, row, preprocessCmd);
+            this.db["insert"](row);
+        }
+        else {
+            var queryKeys = {},
+                keyName;
+            var i, cnt = this.indexKeys.length;
+            for (i = 0; i < cnt; i++) {
+                keyName = this.indexKeys[i];
+                if (row.hasOwnProperty(keyName)) {
+                    queryKeys[keyName] = row[keyName];
+                }
+            }
+            if (!is_empty(queryKeys)) {
+                var items = this.db(queryKeys);
+                var itemOld = items["first"]() || null;
+                row = this.buildUpdateItem(itemOld, row, preprocessCmd);
+                if (itemOld)
+                    items["update"](row);
+                else
+                    this.db["insert"](row);
+            }
+            else {
+                row = this.buildUpdateItem(null, row, preprocessCmd);
+                this.db["insert"](row);
+            }
+        }
+        if (row["___id"])
+            this.exp_LastSavedRowID = row["___id"];
+    };
+    instanceProto.buildUpdateItem = function (itemOld, preparedItem, preprocessCmd) {
+        if (!this.hasPreprocessCmd || (preprocessCmd == null))
+            return preparedItem;
+        var keys = preprocessCmd["inc"];
+        for (var k in keys) {
+            preparedItem[k] = getItemValue(itemOld, k, 0) + keys[k];
+            delete keys[k];
+        }
+        var keys = preprocessCmd["max"];
+        for (var k in keys) {
+            preparedItem[k] = Math.max(getItemValue(itemOld, k, 0), keys[k]);
+            delete keys[k];
+        }
+        var keys = preprocessCmd["min"];
+        for (var k in keys) {
+            preparedItem[k] = Math.min(getItemValue(itemOld, k, 0), keys[k]);
+            delete keys[k];
+        }
+        this.hasPreprocessCmd = false;
+        return preparedItem;
+    };
+    instanceProto.CleanFilters = function () {
+        this.filters = {};
+        if (this.order_cond == null)
+            this.order_cond = [];
+        this.order_cond.length = 0;
+    };
+    var isEmptyTable = function (o) {
+        for (var k in o)
+            return false;
+        return true;
+    }
+    instanceProto.NewFilters = function () {
+        this.query_base = null;
+        this.CleanFilters();
+        this.query_flag = true;
+    };
+    var COMPARE_TYPES = ["is", "!is", "gt", "lt", "gte", "lte"];
+    instanceProto.AddValueComparsion = function (k, cmp, v) {
+        if (!this.filters.hasOwnProperty(k))
+            this.filters[k] = {};
+        this.filters[k][COMPARE_TYPES[cmp]] = v;
+        this.query_flag = true;
+    };
+    instanceProto.AddValueInclude = function (k, v) {
+        if (!this.filters.hasOwnProperty(k))
+            this.filters[k] = [];
+        this.filters[k].push(v);
+        this.query_flag = true;
+    };
+    instanceProto.AddRegexTest = function (k, s, f) {
+        if (!this.filters.hasOwnProperty(k))
+            this.filters[k] = {};
+        this.filters[k]["regex"] = [s, f];
+        this.query_flag = true;
+    };
+    var ORDER_TYPES = ["desc", "asec", "logicaldesc", "logical"];
+    instanceProto.AddOrder = function (k, order_) {
+        this.order_cond.push(k + " " + ORDER_TYPES[order_]);
+        this.query_flag = true;
+    };
+    var process_filters = function (filters) {
+        for (var k in filters) {
+            if (filters[k].hasOwnProperty("regex")) {
+                var regex = filters[k]["regex"];
+                filters[k]["regex"] = new RegExp(regex[0], regex[1]);
+            }
+        }
+        return filters;
+    };
+    instanceProto.GetQueryResult = function () {
+        if (this.query_base == null) {
+            this.query_base = this.db();
+            this.filter_history["flt"] = {};
+            this.filter_history["ord"] = "";
+        }
+        var query_result = this.query_base;
+        if (!isEmptyTable(this.filters)) {
+            var filter_copy = JSON.parse(JSON.stringify(this.filters));
+            var filters = process_filters(this.filters);
+            query_result = query_result["filter"](filters);
+            for (var k in filter_copy)
+                this.filter_history["flt"][k] = filter_copy[k];
+        }
+        if (this.order_cond.length > 0) {
+            var ord = this.order_cond.join(", ");
+            this.filter_history["ord"] = ord;
+            query_result = query_result["order"](ord);
+        }
+        this.query_base = query_result;
+        this.CleanFilters();
+        return query_result;
+    };
+    instanceProto.GetCurrentQueriedRows = function () {
+        if (!this.queriedRows || this.query_flag) {
+            this.queriedRows = this.GetQueryResult();
+            this.query_flag = false;
+        }
+        return this.queriedRows;
+    };
+    instanceProto.Index2QueriedRowID = function (index_, default_value) {
+        var queriedRows = this.GetCurrentQueriedRows();
+        var row = queriedRows["get"]()[index_];
+        return getItemValue(row, "___id", default_value);
+    };
+    var getEvalValue = function (v, prefix) {
+        if (v == null)
+            v = 0;
+        else {
+            try {
+                v = eval("(" + v + ")");
+            } catch (e) {
+                if (prefix == null)
+                    prefix = "";
+                console.error("TaffyDB: Eval " + prefix + " : " + v + " failed");
+                v = 0;
+            }
+        }
+        return v;
+    };
+    var clean_table = function (o) {
+        for (var k in o)
+            delete o[k];
+    };
+    var is_empty = function (o) {
+        for (var k in o)
+            return false;
+        return true;
+    };
+    var getValue = function (keys, root) {
+        if ((keys == null) || (keys === "") || (keys.length === 0)) {
+            return root;
+        } else if (typeof (root) != 'object') {
+            return root;
+        } else {
+            if (typeof (keys) === "string")
+                keys = keys.split(".");
+            var i, cnt = keys.length,
+                key;
+            var entry = root;
+            for (i = 0; i < cnt; i++) {
+                key = keys[i];
+                if (entry.hasOwnProperty(key))
+                    entry = entry[key];
+                else
+                    return;
+            }
+            return entry;
+        }
+    };
+    var getItemValue = function (item, k, default_value) {
+        return din(getValue(k, item), default_value);
+    };
+    var din = function (d, default_value) {
+        var o;
+        if (d === true)
+            o = 1;
+        else if (d === false)
+            o = 0;
+        else if (d == null) {
+            if (default_value != null)
+                o = default_value;
+            else
+                o = 0;
+        } else if (typeof (d) == "object")
+            o = JSON.stringify(d);
+        else
+            o = d;
+        return o;
+    };
+    instanceProto.saveToJSON = function () {
+        var db_save = null;
+        if (this.db_name === "")
+            db_save = this.db()["get"]();
+        else {
+            var database_ref = get_global_database_reference(this.db_name);
+            if (database_ref.ownerUID === null)
+                database_ref.ownerUID = this.uid;
+            if (database_ref.ownerUID === this.uid)
+                db_save = this.db()["get"]();
+        }
+        var cur_fflt = {
+            "flt": this.filters,
+            "ord": this.order_cond
+        };
+        var qIds = null;
+        if (this.queriedRows) {
+            var rows = this.queriedRows["get"]();
+            var i, cnt = rows.length;
+            qIds = [];
+            for (i = 0; i < cnt; i++)
+                qIds.push(rows[i]["___id"]);
+        }
+        return {
+            "rID": this.rowID,
+            "name": this.db_name,
+            "idxKeys": this.indexKeys,
+            "db": db_save,
+            "fltcur": cur_fflt,
+            "preCmd": this.preprocessCmd,
+            "prepItm": this.preparedItem,
+            "flthis": (this.queriedRows) ? this.filter_history : null,
+            "kt": this.keyType,
+        };
+    };
+    instanceProto.loadFromJSON = function (o) {
+        this.rowID = o["rID"];
+        this.db_name = o["name"];
+        this.indexKeys = o["idxKeys"];
+        if (this.db_name === "")
+            this.db = window["TAFFY"](o["db"]);
+        else {
+            if (o["db"] !== null) {
+                if (cr.plugins_.Rex_taffydb.databases.hasOwnProperty(db_name))
+                    delete cr.plugins_.Rex_taffydb.databases[db_name];
+                create_global_database(this.uid, this.db_name, o["db"]);
+            }
+        }
+        this.filters = o["fltcur"]["flt"];
+        this.order_cond = o["fltcur"]["ord"];
+        this.preprocessCmd = o["preCmd"];
+        this.preparedItem = o["prepItm"];
+        this.__flthis_save = o["flthis"];
+        this.keyType = o["kt"];
+    };
+    instanceProto.afterLoad = function () {
+        if (this.db_name !== "") {
+            create_global_database(this.uid, this.db_name);
+            this.db = get_global_database_reference(this.db_name).db;
+        }
+        this.queriedRows = null;
+        var flthis = this.__flthis_save;
+        if (flthis) {
+            var q = this.db();
+            var flt = flthis["flt"];
+            if (!isEmptyTable(flt))
+                q = q["filter"](flt);
+            var ord = flthis["ord"];
+            if (ord !== "")
+                q = q["order"](ord);
+            this.queriedRows = q;
+            this.__flthis_save = null;
+        }
+    };
+    function Cnds() {};
+    pluginProto.cnds = new Cnds();
+    Cnds.prototype.ForEachRow = function () {
+        var queriedRows = this.GetCurrentQueriedRows();
+        var runtime = this.runtime;
+        var current_frame = runtime.getCurrentEventStack();
+        var current_event = current_frame.current_event;
+        var solModifierAfterCnds = current_frame.isModifierAfterCnds();
+        var self = this;
+        var for_each_row = function (r, i) {
+            if (solModifierAfterCnds) {
+                runtime.pushCopySol(current_event.solModifiers);
+            }
+            self.exp_CurRowID = r["___id"];
+            self.exp_CurRowIndex = i;
+            current_event.retrigger();
+            if (solModifierAfterCnds) {
+                runtime.popSol(current_event.solModifiers);
+            }
+        };
+        queriedRows["each"](for_each_row);
+        this.exp_CurRowID = "";
+        this.exp_CurRowIndex = -1;
+        return false;
+    };
+    Cnds.prototype.NewFilters = function () {
+        this.NewFilters();
+        return true;
+    };
+    Cnds.prototype.AddValueComparsion = function (k, cmp, v) {
+        this.AddValueComparsion(k, cmp, v);
+        return true;
+    };
+    Cnds.prototype.AddBooleanValueComparsion = function (k, v) {
+        this.AddValueComparsion(k, 0, (v === 1));
+        return true;
+    };
+    Cnds.prototype.AddValueInclude = function (k, v) {
+        this.AddValueInclude(k, v);
+        return true;
+    };
+    Cnds.prototype.AddRegexTest = function (k, s, f) {
+        this.AddRegexTest(k, s, f);
+        return true;
+    };
+    Cnds.prototype.AddOrder = function (k, order_) {
+        this.AddOrder(k, order_);
+        return true;
+    };
+    function Acts() {};
+    pluginProto.acts = new Acts();
+    Acts.prototype.InsertCSV = function (csv_string, is_eval, delimiter) {
+        is_eval = (is_eval === 1);
+        var csv_data = CSVToArray(csv_string, delimiter);
+        var col_keys = csv_data.shift(),
+            col_key;
+        var csv_row, row, cell_value;
+        var r, row_cnt = csv_data.length;
+        var c, col_cnt = col_keys.length;
+        var prefix; // for debug
+        for (r = 0; r < row_cnt; r++) {
+            csv_row = csv_data[r];
+            row = {};
+            for (c = 0; c < col_cnt; c++) {
+                col_key = col_keys[c];
+                cell_value = csv_row[c]; // string
+                prefix = " (" + r + "," + c + ") ";
+                if (is_eval)
+                    row[col_key] = getEvalValue(cell_value, prefix);
+                else {
+                    if (this.keyType.hasOwnProperty(col_key)) {
+                        var type = this.keyType[col_key];
+                        switch (type) {
+                            case 1: // number
+                                cell_value = parseFloat(cell_value);
+                                break;
+                            case 2: // eval
+                                cell_value = getEvalValue(cell_value, prefix);
+                                break;
+                        }
+                    }
+                    row[col_key] = cell_value;
+                }
+            }
+            this.SaveRow(row, this.indexKeys);
+        }
+        clean_table(this.keyType);
+    };
+    Acts.prototype.InsertJSON = function (json_string) {
+        var rows;
+        try {
+            rows = JSON.parse(json_string);
+        } catch (err) {
+            return;
+        }
+        var i, cnt = rows.length;
+        for (i = 0; i < cnt; i++)
+            this.SaveRow(rows[i], this.indexKeys);
+    };
+    Acts.prototype.RemoveByRowID = function (rowID) {
+        this.db(rowID)["remove"]();
+    };
+    Acts.prototype.RemoveByRowIndex = function (index_) {
+        var rowID = this.Index2QueriedRowID(index_, null);
+        if (rowID === null)
+            return;
+        this.db(rowID)["remove"]();
+    };
+    Acts.prototype.SetIndexKeys = function (params_) {
+        cr.shallowAssignArray(this.indexKeys, params_.split(","));
+    };
+    Acts.prototype.RemoveAll = function () {
+        this.db()["remove"]();
+    };
+    Acts.prototype.SetValue = function (key_, value_, cond) {
+        if (cond === 0)
+            this.preparedItem[key_] = value_;
+        else {
+            var cmdName = (cond === 1) ? "max" : "min";
+            this.preprocessCmd[cmdName][key_] = value_;
+            this.hasPreprocessCmd = true;
+        }
+    };
+    Acts.prototype.SetBooleanValue = function (key_, is_true) {
+        this.preparedItem[key_] = (is_true === 1);
+    };
+    Acts.prototype.Save = function () {
+        this.SaveRow(this.preparedItem, this.indexKeys, this.rowID, this.preprocessCmd);
+        this.rowID = "";
+        this.preparedItem = {};
+    };
+    Acts.prototype.UpdateQueriedRows = function (key_, value_) {
+        var queriedRows = this.GetCurrentQueriedRows();
+        var item = {};
+        item[key_] = value_;
+        queriedRows["update"](item);
+    };
+    Acts.prototype.UpdateQueriedRows_BooleanValue = function (key_, is_true) {
+        var queriedRows = this.GetCurrentQueriedRows();
+        var item = {};
+        item[key_] = (is_true === 1);
+        queriedRows["update"](item);
+    };
+    Acts.prototype.SetRowID = function (rowID) {
+        this.rowID = rowID;
+    };
+    Acts.prototype.SetRowIndex = function (index_) {
+        this.rowID = this.Index2QueriedRowID(index_, null);
+    };
+    Acts.prototype.IncValue = function (key_, value_) {
+        this.preprocessCmd["inc"][key_] = value_;
+        this.hasPreprocessCmd = true;
+    };
+    Acts.prototype.SetJSON = function (key_, value_) {
+        this.preparedItem[key_] = JSON.parse(value_);
+    };
+    Acts.prototype.NewFilters = function () {
+        this.NewFilters();
+    };
+    Acts.prototype.AddValueComparsion = function (k, cmp, v) {
+        this.AddValueComparsion(k, cmp, v);
+    };
+    Acts.prototype.AddBooleanValueComparsion = function (k, v) {
+        this.AddValueComparsion(k, 0, (v === 1));
+    };
+    Acts.prototype.AddValueInclude = function (k, v) {
+        this.AddValueInclude(k, v);
+    };
+    Acts.prototype.AddRegexTest = function (k, s, f) {
+        this.AddRegexTest(k, s, f);
+    };
+    Acts.prototype.AddOrder = function (k, order_) {
+        this.AddOrder(k, order_);
+    };
+    Acts.prototype.RemoveQueriedRows = function () {
+        var queriedRows = this.queriedRows;
+        if (queriedRows == null)
+            queriedRows = this.db(this.filters);
+        queriedRows["remove"]();
+        this.queriedRows = null;
+        this.CleanFilters();
+    };
+    Acts.prototype.InsertCSV_DefineType = function (key_, type_) {
+        this.keyType[key_] = type_;
+    };
+    Acts.prototype.LinkToDatabase = function (name) {
+        this.LinkToDatabase(name);
+    };
+    function Exps() {};
+    pluginProto.exps = new Exps();
+    Exps.prototype.At = function (ret) {
+        var primary_keys = {},
+            keyName;
+        var i, cnt = this.indexKeys.length;
+        for (i = 0; i < cnt; i++) {
+            keyName = this.indexKeys[i];
+            primary_keys[keyName] = arguments[i + 1];
+        }
+        var row = this.db(primary_keys)["first"]();
+        var k = arguments[cnt + 1];
+        var default_value = arguments[cnt + 2];
+        ret.set_any(getItemValue(row, k, default_value));
+    };
+    Exps.prototype.CurRowContent = function (ret, k, default_value) {
+        var row = this.db(this.exp_CurRowID)["get"]()[0];
+        ret.set_any(getItemValue(row, k, default_value));
+    };
+    Exps.prototype.Index2QueriedRowContent = function (ret, i, k, default_value) {
+        var queriedRows = this.GetCurrentQueriedRows();
+        var row = queriedRows["get"]()[i];
+        ret.set_any(getItemValue(row, k, default_value));
+    };
+    Exps.prototype.QueriedRowsCount = function (ret) {
+        var queriedRows = this.GetCurrentQueriedRows();
+        ret.set_int(queriedRows["count"]());
+    };
+    Exps.prototype.QueriedSum = function (ret, k) {
+        var queriedRows = this.GetCurrentQueriedRows();
+        ret.set_int(queriedRows["sum"](k));
+    };
+    Exps.prototype.QueriedMin = function (ret, k) {
+        var queriedRows = this.GetCurrentQueriedRows();
+        ret.set_int(queriedRows["min"](k));
+    };
+    Exps.prototype.QueriedMax = function (ret, k) {
+        var queriedRows = this.GetCurrentQueriedRows();
+        ret.set_int(queriedRows["max"](k));
+    };
+    Exps.prototype.QueriedRowsAsJSON = function (ret) {
+        var queriedRows = this.GetCurrentQueriedRows();
+        ret.set_string(queriedRows["stringify"]());
+    };
+    Exps.prototype.KeyRowID = function (ret) {
+        ret.set_string("___id");
+    };
+    Exps.prototype.LastSavedRowID = function (ret) {
+        ret.set_string(this.exp_LastSavedRowID);
+    };
+    Exps.prototype.ID2RowContent = function (ret, rowID, k, default_value) {
+        var row = this.db(rowID)["get"]()[0];
+        ret.set_any(getItemValue(row, k, default_value));
+    };
+    Exps.prototype.QueriedRowsIndex2RowID = function (ret, index_) {
+        ret.set_string(this.Index2QueriedRowID(index_, ""));
+    };
+    Exps.prototype.CurRowIndex = function (ret) {
+        ret.set_int(this.exp_CurRowIndex);
+    };
+    Exps.prototype.CurRowID = function (ret) {
+        ret.set_any(this.exp_CurRowID);
+    };
+    Exps.prototype.Index2QueriedRowID = function (ret, index_) {
+        ret.set_string(this.Index2QueriedRowID(index_, ""));
+    };
+    Exps.prototype.AllRowsAsJSON = function (ret) {
+        ret.set_string(this.db()["stringify"]());
+    };
+    Exps.prototype.AllRowsCount = function (ret) {
+        ret.set_int(this.db()["count"]());
+    };
+    Exps.prototype.DatabaseName = function (ret) {
+        ret.set_string(this.db_name);
+    };
+    var CSVToArray = function (strData, strDelimiter) {
+        strDelimiter = (strDelimiter || ",");
+        var objPattern = new RegExp(
+            (
+                "(\\" + strDelimiter + "|\\r?\\n|\\r|^)" +
+                "(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|" +
+                "([^\"\\" + strDelimiter + "\\r\\n]*))"
+            ),
+            "gi"
+        );
+        var arrData = [
+            []
+        ];
+        var arrMatches = null;
+        while (arrMatches = objPattern.exec(strData)) {
+            var strMatchedDelimiter = arrMatches[1];
+            if (
+                strMatchedDelimiter.length &&
+                (strMatchedDelimiter != strDelimiter)
+            ) {
+                arrData.push([]);
+            }
+            if (arrMatches[2]) {
+                var strMatchedValue = arrMatches[2].replace(
+                    new RegExp("\"\"", "g"),
+                    "\""
+                );
+            } else {
+                var strMatchedValue = arrMatches[3];
+            }
+            arrData[arrData.length - 1].push(strMatchedValue);
+        }
+        return (arrData);
     };
 }());
 ;
@@ -22423,6 +25075,268 @@ cr.plugins_.Touch = function(runtime)
 }());
 ;
 ;
+cr.plugins_.WebStorage = function(runtime)
+{
+	this.runtime = runtime;
+};
+(function()
+{
+	var pluginProto = cr.plugins_.WebStorage.prototype;
+	pluginProto.Type = function(plugin)
+	{
+		this.plugin = plugin;
+		this.runtime = plugin.runtime;
+	};
+	var typeProto = pluginProto.Type.prototype;
+	typeProto.onCreate = function()
+	{
+	};
+	pluginProto.Instance = function(type)
+	{
+		this.type = type;
+		this.runtime = type.runtime;
+	};
+	var instanceProto = pluginProto.Instance.prototype;
+	var prefix = "";
+	var is_arcade = (typeof window["is_scirra_arcade"] !== "undefined");
+	if (is_arcade)
+		prefix = "arcade" + window["scirra_arcade_id"];
+	var isSupported = false;
+	try {
+		localStorage.getItem("test");
+		isSupported = true;
+	}
+	catch (e)
+	{
+		isSupported = false;
+	}
+	instanceProto.onCreate = function()
+	{
+		if (!isSupported)
+		{
+			cr.logexport("[Construct 2] Webstorage plugin: local storage is not supported on this platform.");
+		}
+	};
+	function Cnds() {};
+	Cnds.prototype.LocalStorageEnabled = function()
+	{
+		return isSupported;
+	};
+	Cnds.prototype.SessionStorageEnabled = function()
+	{
+		return isSupported;
+	};
+	Cnds.prototype.LocalStorageExists = function(key)
+	{
+		if (!isSupported)
+			return false;
+		return localStorage.getItem(prefix + key) != null;
+	};
+	Cnds.prototype.SessionStorageExists = function(key)
+	{
+		if (!isSupported)
+			return false;
+		return sessionStorage.getItem(prefix + key) != null;
+	};
+	Cnds.prototype.OnQuotaExceeded = function ()
+	{
+		return true;
+	};
+	Cnds.prototype.CompareKeyText = function (key, text_to_compare, case_sensitive)
+	{
+		if (!isSupported)
+			return false;
+		var value = localStorage.getItem(prefix + key) || "";
+		if (case_sensitive)
+			return value == text_to_compare;
+		else
+			return cr.equals_nocase(value, text_to_compare);
+	};
+	Cnds.prototype.CompareKeyNumber = function (key, cmp, x)
+	{
+		if (!isSupported)
+			return false;
+		var value = localStorage.getItem(prefix + key) || "";
+		return cr.do_cmp(parseFloat(value), cmp, x);
+	};
+	pluginProto.cnds = new Cnds();
+	function Acts() {};
+	Acts.prototype.StoreLocal = function(key, data)
+	{
+		if (!isSupported)
+			return;
+		try {
+			localStorage.setItem(prefix + key, data);
+		}
+		catch (e)
+		{
+			this.runtime.trigger(cr.plugins_.WebStorage.prototype.cnds.OnQuotaExceeded, this);
+		}
+	};
+	Acts.prototype.StoreSession = function(key,data)
+	{
+		if (!isSupported)
+			return;
+		try {
+			sessionStorage.setItem(prefix + key, data);
+		}
+		catch (e)
+		{
+			this.runtime.trigger(cr.plugins_.WebStorage.prototype.cnds.OnQuotaExceeded, this);
+		}
+	};
+	Acts.prototype.RemoveLocal = function(key)
+	{
+		if (!isSupported)
+			return;
+		localStorage.removeItem(prefix + key);
+	};
+	Acts.prototype.RemoveSession = function(key)
+	{
+		if (!isSupported)
+			return;
+		sessionStorage.removeItem(prefix + key);
+	};
+	Acts.prototype.ClearLocal = function()
+	{
+		if (!isSupported)
+			return;
+		if (!is_arcade)
+			localStorage.clear();
+	};
+	Acts.prototype.ClearSession = function()
+	{
+		if (!isSupported)
+			return;
+		if (!is_arcade)
+			sessionStorage.clear();
+	};
+	Acts.prototype.JSONLoad = function (json_, mode_)
+	{
+		if (!isSupported)
+			return;
+		var d;
+		try {
+			d = JSON.parse(json_);
+		}
+		catch(e) { return; }
+		if (!d["c2dictionary"])			// presumably not a c2dictionary object
+			return;
+		var o = d["data"];
+		if (mode_ === 0 && !is_arcade)	// 'set' mode: must clear webstorage first
+			localStorage.clear();
+		var p;
+		for (p in o)
+		{
+			if (o.hasOwnProperty(p))
+			{
+				try {
+					localStorage.setItem(prefix + p, o[p]);
+				}
+				catch (e)
+				{
+					this.runtime.trigger(cr.plugins_.WebStorage.prototype.cnds.OnQuotaExceeded, this);
+					return;
+				}
+			}
+		}
+	};
+	pluginProto.acts = new Acts();
+	function Exps() {};
+	Exps.prototype.LocalValue = function(ret,key)
+	{
+		if (!isSupported)
+		{
+			ret.set_string("");
+			return;
+		}
+		ret.set_string(localStorage.getItem(prefix + key) || "");
+	};
+	Exps.prototype.SessionValue = function(ret,key)
+	{
+		if (!isSupported)
+		{
+			ret.set_string("");
+			return;
+		}
+		ret.set_string(sessionStorage.getItem(prefix + key) || "");
+	};
+	Exps.prototype.LocalCount = function(ret)
+	{
+		if (!isSupported)
+		{
+			ret.set_int(0);
+			return;
+		}
+		ret.set_int(is_arcade ? 0 : localStorage.length);
+	};
+	Exps.prototype.SessionCount = function(ret)
+	{
+		if (!isSupported)
+		{
+			ret.set_int(0);
+			return;
+		}
+		ret.set_int(is_arcade ? 0 : sessionStorage.length);
+	};
+	Exps.prototype.LocalAt = function(ret,n)
+	{
+		if (is_arcade || !isSupported)
+			ret.set_string("");
+		else
+			ret.set_string(localStorage.getItem(localStorage.key(n)) || "");
+	};
+	Exps.prototype.SessionAt = function(ret,n)
+	{
+		if (is_arcade || !isSupported)
+			ret.set_string("");
+		else
+			ret.set_string(sessionStorage.getItem(sessionStorage.key(n)) || "");
+	};
+	Exps.prototype.LocalKeyAt = function(ret,n)
+	{
+		if (is_arcade || !isSupported)
+			ret.set_string("");
+		else
+			ret.set_string(localStorage.key(n) || "");
+	};
+	Exps.prototype.SessionKeyAt = function(ret,n)
+	{
+		if (is_arcade || !isSupported)
+			ret.set_string("");
+		else
+			ret.set_string(sessionStorage.key(n) || "");
+	};
+	Exps.prototype.AsJSON = function (ret)
+	{
+		if (!isSupported)
+		{
+			ret.set_string("");
+			return;
+		}
+		var o = {}, i, len, k;
+		for (i = 0, len = localStorage.length; i < len; i++)
+		{
+			k = localStorage.key(i);
+			if (is_arcade)
+			{
+				if (k.substr(0, prefix.length) === prefix)
+				{
+					o[k.substr(prefix.length)] = localStorage.getItem(k);
+				}
+			}
+			else
+				o[k] = localStorage.getItem(k);
+		}
+		ret.set_string(JSON.stringify({
+			"c2dictionary": true,
+			"data": o
+		}));
+	};
+	pluginProto.exps = new Exps();
+}());
+;
+;
 cr.plugins_.rex_TagText = function (runtime) {
     this.runtime = runtime;
 };
@@ -24511,14 +27425,22 @@ cr.behaviors.Sin = function(runtime)
 	behaviorProto.exps = new Exps();
 }());
 cr.getObjectRefTable = function () { return [
+	cr.plugins_.Browser,
 	cr.plugins_.Audio,
 	cr.plugins_.Function,
 	cr.plugins_.Particles,
+	cr.plugins_.Rex_Comment,
+	cr.plugins_.Rex_Hash,
 	cr.plugins_.Rex_jsshell,
+	cr.plugins_.Rex_MomenJS,
+	cr.plugins_.Rex_taffydb,
 	cr.plugins_.rex_TagText,
 	cr.plugins_.Sprite,
-	cr.plugins_.TextBox,
+	cr.plugins_.Rex_WaitEvent,
+	cr.plugins_.Rex_WebstorageExt,
 	cr.plugins_.Touch,
+	cr.plugins_.TextBox,
+	cr.plugins_.WebStorage,
 	cr.plugins_.TiledBg,
 	cr.behaviors.Rex_Turntable,
 	cr.behaviors.Sin,
@@ -24530,7 +27452,9 @@ cr.getObjectRefTable = function () { return [
 	cr.system_object.prototype.exps.floor,
 	cr.system_object.prototype.exps.random,
 	cr.behaviors.Rex_Turntable.prototype.acts.StartSpinning,
-	cr.system_object.prototype.exps.round,
+	cr.plugins_.TiledBg.prototype.exps.Width,
+	cr.plugins_.Touch.prototype.cnds.IsInTouch,
+	cr.system_object.prototype.exps.dt,
 	cr.behaviors.Rex_Turntable.prototype.cnds.OnHitTarget,
 	cr.plugins_.rex_TagText.prototype.acts.SetText,
 	cr.system_object.prototype.cnds.IsGroupActive,
@@ -24545,5 +27469,28 @@ cr.getObjectRefTable = function () { return [
 	cr.plugins_.TextBox.prototype.acts.SetText,
 	cr.plugins_.TextBox.prototype.exps.Text,
 	cr.system_object.prototype.exps.newline,
-	cr.plugins_.Rex_jsshell.prototype.cnds.OnCallback
+	cr.plugins_.Rex_jsshell.prototype.cnds.OnCallback,
+	cr.system_object.prototype.cnds.OnLoadFinished,
+	cr.system_object.prototype.acts.GoToLayout,
+	cr.plugins_.Rex_jsshell.prototype.acts.LoadAPI,
+	cr.plugins_.Rex_jsshell.prototype.acts.SetProp,
+	cr.system_object.prototype.acts.SetGroupActive,
+	cr.plugins_.Rex_jsshell.prototype.exps.Param,
+	cr.plugins_.Rex_Hash.prototype.acts.StringToHashTable,
+	cr.plugins_.Rex_Hash.prototype.exps.At,
+	cr.plugins_.Rex_Comment.prototype.acts.NOOP,
+	cr.plugins_.Browser.prototype.acts.ExecJs,
+	cr.plugins_.Rex_Hash.prototype.cnds.ForEachItem,
+	cr.plugins_.Rex_Hash.prototype.exps.CurValue,
+	cr.plugins_.Rex_taffydb.prototype.acts.SetValue,
+	cr.plugins_.Rex_MomenJS.prototype.acts.SetFromString,
+	cr.plugins_.Rex_MomenJS.prototype.exps.UnixTimestamp,
+	cr.plugins_.Rex_taffydb.prototype.acts.Save,
+	cr.plugins_.WebStorage.prototype.acts.StoreLocal,
+	cr.plugins_.Rex_taffydb.prototype.exps.AllRowsAsJSON,
+	cr.plugins_.Rex_WaitEvent.prototype.acts.EventFinished,
+	cr.system_object.prototype.cnds.Compare,
+	cr.system_object.prototype.exps["int"],
+	cr.plugins_.TextBox.prototype.acts.ScrollToBottom,
+	cr.plugins_.Browser.prototype.acts.ConsoleLog
 ];};
