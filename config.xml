@@ -117,7 +117,7 @@
 	<plugin name="cordova-plugin-media" />
 	<plugin name="cordova-plugin-nativeaudio" />
 	<plugin name="cordova-plugin-wkwebview-engine" />
-	<plugin name="cordova-plugin-crosswalk-webview" version="1.6.1">
+	<plugin name="cordova-plugin-crosswalk-webview">
 		<variable name="XWALK_MODE" value="lite" />
 	</plugin>
 	<plugin name="cordova-android-support-gradle-release">
